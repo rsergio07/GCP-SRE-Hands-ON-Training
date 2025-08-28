@@ -96,7 +96,7 @@ exercise1/
 │   ├── main.py          # Main application with SRE instrumentation  
 │   └── config.py        # Configuration management
 ├── requirements.txt     # Python dependencies
-└── README.md           # This guide
+└── README.md            # This guide
 ```
 
 ### Why This Structure Matters
@@ -228,6 +228,13 @@ curl http://localhost:8080/ready
 ```
 
 Observe that each request generates structured log entries in your first terminal. The health endpoint always returns success (liveness probe), while the ready endpoint occasionally returns 503 status (simulating real-world readiness checks). The stores endpoint sometimes returns errors, which simulates real application behavior and provides learning opportunities.
+
+### Understanding the Responses
+
+**Reference Documentation**:
+- [HTTP Status Codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) - Understanding 200, 503, and other response codes
+- [Kubernetes Health Checks](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/) - Official documentation on liveness and readiness probes
+- [REST API Basics](https://restfulapi.net/http-methods/) - Understanding GET requests and API design patterns
 
 ### Step 8: Access via Browser
 
