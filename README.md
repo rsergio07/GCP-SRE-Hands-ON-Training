@@ -138,7 +138,18 @@ This course builds upon the proven methodology of the [SRE Academy](https://gith
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Community and Contributions
+
+This course is open-source and community-driven. Contributions are welcome through:
+
+- **Issue reporting for bugs or unclear instructions**
+- **Exercise improvements and additional scenarios**
+- **Documentation enhancements and troubleshooting guides**
+- **Video recommendations for theory sections**
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
 
 ---
 
