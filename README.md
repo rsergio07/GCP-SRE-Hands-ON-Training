@@ -38,30 +38,30 @@ Complete setup instructions and detailed prerequisites are provided in the [inst
 
 | Exercise | Title | Duration | Focus Area |
 |----------|-------|----------|------------|
-| [Exercise 1](exercises/exercise1/) | Cloud Development Environment | 90 min | GitHub Codespaces, Cloud IDE Setup |
-| [Exercise 2](exercises/exercise2/) | SRE Flask Application | 120 min | Application Metrics, Health Checks |
-| [Exercise 3](exercises/exercise3/) | Cloud Container Builds | 90 min | GitHub Actions, Container Registry |
-| [Exercise 4](exercises/exercise4/) | Kubernetes Deployment | 120 min | GKE, kubectl, Service Management |
-| [Exercise 5](exercises/exercise5/) | Cloud Monitoring Stack | 120 min | Prometheus, Cloud Monitoring |
-| [Exercise 6](exercises/exercise6/) | Alerting and Response | 90 min | Alert Policies, Incident Management |
-| [Exercise 7](exercises/exercise7/) | Production CI/CD | 120 min | Automated Deployments, GitOps |
-| [Exercise 8](exercises/exercise8/) | Production Readiness | 120 min | Security, Cost Optimization, DR |
+| [Exercise 1](exercises/exercise1/) | Cloud Development Environment & SRE Application | 120 min | GitHub Codespaces, SRE Flask App, Observability |
+| [Exercise 2](exercises/exercise2/) | Container Builds & GitHub Actions | 120 min | Docker, CI/CD Pipelines, Container Registry |
+| [Exercise 3](exercises/exercise3/) | Kubernetes Deployment | 120 min | GKE, kubectl, Service Management |
+| [Exercise 4](exercises/exercise4/) | Cloud Monitoring Stack | 120 min | Prometheus, Cloud Monitoring, Dashboards |
+| [Exercise 5](exercises/exercise5/) | Alerting and Response | 90 min | Alert Policies, SLOs, Incident Management |
+| [Exercise 6](exercises/exercise6/) | Production CI/CD | 120 min | GitOps, Automated Deployments, Rollbacks |
+| [Exercise 7](exercises/exercise7/) | Production Readiness | 120 min | Security, Cost Optimization, DR |
+| [Exercise 8](exercises/exercise8/) | Advanced SRE Operations | 90 min | Chaos Engineering, Performance Optimization |
 
 **Total Course Duration**: 16+ hours of hands-on learning
 
 ## Learning Path
 
 ### Week 1-2: Foundation
-Complete Exercises 1-2 to establish cloud development environment and build your first SRE-instrumented application.
+Complete Exercises 1-2 to establish cloud development environment, build your SRE-instrumented application, and implement automated container builds.
 
-### Week 3-4: Kubernetes Deployment
-Complete Exercises 3-4 to containerize your application and deploy it on Google Kubernetes Engine.
+### Week 3-4: Kubernetes Deployment & Monitoring
+Complete Exercises 3-4 to deploy on Google Kubernetes Engine and implement comprehensive monitoring and dashboards.
 
-### Week 5-6: Observability
-Complete Exercises 5-6 to implement comprehensive monitoring, logging, and alerting.
+### Week 5-6: Production Operations
+Complete Exercises 5-6 to establish alerting strategies and automated deployment pipelines.
 
-### Week 7-8: Production Operations
-Complete Exercises 7-8 to build automated deployment pipelines and production-ready operations.
+### Week 7-8: Production Readiness & Advanced Operations
+Complete Exercises 7-8 to implement security, optimize costs, and learn advanced SRE techniques.
 
 ## Key Technologies
 
