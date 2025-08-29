@@ -9,7 +9,7 @@ class Config:
     DEBUG = FLASK_ENV == 'development'
     
     # Application settings
-    APP_NAME = os.environ.get('APP_NAME', 'joshua-sre-app')
+    APP_NAME = os.environ.get('APP_NAME', 'sre-demo-app')
     APP_VERSION = os.environ.get('APP_VERSION', '1.0.0')
     
     # Server settings
