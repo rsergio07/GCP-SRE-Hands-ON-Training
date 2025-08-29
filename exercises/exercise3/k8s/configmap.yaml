@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sre-demo-config
+  labels:
+    app: sre-demo-app
+    component: config
+data:
+  app.name: "sre-demo-app"
+  app.version: "1.0.0"
+  log.level: "INFO"
+  log.format: "json"
+  
+  # Application configuration
+  app.properties: |
+    # SRE Demo Application Configuration
+    # This configuration is mounted as a file in the container
+    
+    # Logging configuration
+    log_level=INFO
+    log_format=json
+    
+    # Metrics configuration
+    metrics_enabled=true
+    metrics_path=/metrics
+    
+    # Health check configuration
+    health_check_interval=30
+    readiness_check_interval=5
+    
+    # Performance tuning
+    max_connections=100
+    request_timeout=30
+    
+    # Feature flags
+    enable_debug_endpoints=false
+    enable_profiling=false
+  
+  # Monitoring configuration
+  monitoring.yaml: |
+    scrape_configs:
+      - job_name: 'sre-demo-app'
+        static_configs:
+          - targets: ['localhost:8080']
+        metrics_path: '/metrics'
+        scrape_interval: 15s
+        scrape_timeout: 10s
+    
+    alerting_rules:
+      - name: 'sre-demo-app'
+        rules:
+          - alert: 'HighErrorRate'
+            expr: 'rate(http_requests_total{status=~"5.."}[5m]) > 0.1'
+            for: '2m'
+            labels:
+              severity: 'critical'
+            annotations:
+              summary: 'High error rate detected'
+              description: 'Error rate is above 10% for 2 minutes'
