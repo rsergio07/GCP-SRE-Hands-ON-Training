@@ -1,0 +1,278 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deployment-alerts
+  namespace: default
+  labels:
+    app: sre-demo-app
+    component: deployment-monitoring
+data:
+  # Prometheus alerting rules for deployment monitoring
+  deployment-alerts.yml: |
+    groups:
+    # Deployment Pipeline Health Alerts
+    - name: deployment-pipeline
+      interval: 30s
+      rules:
+      
+      # ArgoCD Sync Failures
+      - alert: ArgoCD-SyncFailure
+        expr: |
+          increase(argocd_app_sync_total{name="sre-demo-app",phase="Failed"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+          service: sre-demo-app
+          alert_type: deployment
+        annotations:
+          summary: "ArgoCD sync failure detected"
+          description: "ArgoCD failed to sync sre-demo-app {{ $value }} times in the last 10 minutes"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/argocd/sync-failures.md"
+          
+      # Deployment Taking Too Long
+      - alert: DeploymentTimeout
+        expr: |
+          (time() - kube_deployment_status_observed_generation{deployment="sre-demo-app"}) > 600
+        for: 1m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+          alert_type: deployment
+        annotations:
+          summary: "Deployment taking longer than expected"
+          description: "Deployment has been in progress for more than 10 minutes"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/deployment/timeout.md"
+          
+      # Rollback Rate Too High
+      - alert: HighRollbackRate
+        expr: |
+          (
+            sum(increase(deployment_rollbacks_total[24h])) /
+            sum(increase(deployment_attempts_total[24h]))
+          ) * 100 > 20
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+          alert_type: deployment
+        annotations:
+          summary: "High rollback rate detected"
+          description: "Rollback rate is {{ $value }}% over the last 24 hours (threshold: 20%)"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/deployment/high-rollback-rate.md"
+
+    # Deployment Impact Alerts
+    - name: deployment-impact
+      interval: 30s
+      rules:
+      
+      # SLO Violation During Deployment
+      - alert: DeploymentSLOViolation
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code!~"5.."}[5m])) /
+            sum(rate(http_requests_total[5m]))
+          ) * 100 < 99 and on() (
+            rate(deployment_events_total{type="rollout_started"}[10m]) > 0
+          )
+        for: 2m
+        labels:
+          severity: critical
+          team: sre
+          service: sre-demo-app
+          alert_type: deployment_slo
+        annotations:
+          summary: "SLO violation during deployment"
+          description: "Availability dropped to {{ $value }}% during deployment (threshold: 99%)"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/deployment/slo-violation.md"
+          
+      # Error Rate Spike During Deployment
+      - alert: DeploymentErrorSpike
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
+            sum(rate(http_requests_total[5m]))
+          ) * 100 > 5 and on() (
+            rate(deployment_events_total{type="rollout_started"}[10m]) > 0
+          )
+        for: 3m
+        labels:
+          severity: critical
+          team: sre
+          service: sre-demo-app
+          alert_type: deployment_error
+        annotations:
+          summary: "Error rate spike during deployment"
+          description: "Error rate increased to {{ $value }}% during deployment"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/deployment/error-spike.md"
+          
+      # Latency Degradation During Deployment
+      - alert: DeploymentLatencyDegradation
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1.0 and on() (
+            rate(deployment_events_total{type="rollout_started"}[10m]) > 0
+          )
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+          alert_type: deployment_performance
+        annotations:
+          summary: "Latency degradation during deployment"
+          description: "P95 latency increased to {{ $value }}s during deployment"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/deployment/latency-degradation.md"
+
+    # GitOps Health Alerts
+    - name: gitops-health
+      interval: 60s
+      rules:
+      
+      # ArgoCD Application Out of Sync
+      - alert: ArgoCD-OutOfSync
+        expr: |
+          argocd_app_info{sync_status!="Synced",name="sre-demo-app"} == 1
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+          alert_type: gitops
+        annotations:
+          summary: "ArgoCD application out of sync"
+          description: "Application {{ $labels.name }} has been out of sync for more than 10 minutes"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/argocd/out-of-sync.md"
+          
+      # ArgoCD Application Unhealthy
+      - alert: ArgoCD-ApplicationUnhealthy
+        expr: |
+          argocd_app_info{health_status!="Healthy",name="sre-demo-app"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+          service: sre-demo-app
+          alert_type: gitops
+        annotations:
+          summary: "ArgoCD application health degraded"
+          description: "Application {{ $labels.name }} health status: {{ $labels.health_status }}"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/argocd/unhealthy-app.md"
+          
+      # ArgoCD Server Down
+      - alert: ArgoCD-ServerDown
+        expr: |
+          up{job="argocd-server"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: sre
+          service: argocd
+          alert_type: infrastructure
+        annotations:
+          summary: "ArgoCD server is down"
+          description: "ArgoCD server is unreachable - GitOps deployments will be impacted"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/argocd/server-down.md"
+
+    # Deployment Frequency and Quality Metrics
+    - name: deployment-quality
+      interval: 300s  # 5 minutes
+      rules:
+      
+      # Low Deployment Frequency
+      - alert: LowDeploymentFrequency
+        expr: |
+          sum(increase(deployment_attempts_total[7d])) < 7
+        for: 1h
+        labels:
+          severity: info
+          team: sre
+          service: sre-demo-app
+          alert_type: deployment_metrics
+        annotations:
+          summary: "Low deployment frequency detected"
+          description: "Only {{ $value }} deployments in the last 7 days (expected: ~1 per day)"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/deployment/frequency.md"
+          
+      # High Deployment Failure Rate
+      - alert: HighDeploymentFailureRate
+        expr: |
+          (
+            sum(increase(deployment_failures_total[7d])) /
+            sum(increase(deployment_attempts_total[7d]))
+          ) * 100 > 15
+        for: 1h
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+          alert_type: deployment_metrics
+        annotations:
+          summary: "High deployment failure rate"
+          description: "Deployment failure rate is {{ $value }}% over the last 7 days"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/deployment/failure-rate.md"
+
+  # Alert routing and notification configuration
+  alert-routing.yaml: |
+    # Alert Routing Configuration for Deployment Alerts
+    
+    routing_rules:
+      critical_deployment_alerts:
+        matchers:
+          - severity="critical"
+          - alert_type=~"deployment.*"
+        route_to: 
+          - "slack://sre-critical"
+          - "pagerduty://sre-oncall"
+          - "email://sre-team"
+        group_wait: "0s"
+        group_interval: "5m"
+        repeat_interval: "15m"
+        
+      warning_deployment_alerts:
+        matchers:
+          - severity="warning"
+          - alert_type=~"deployment.*"
+        route_to:
+          - "slack://sre-alerts"
+          - "email://sre-team"
+        group_wait: "5m"
+        group_interval: "10m"
+        repeat_interval: "4h"
+        
+      gitops_alerts:
+        matchers:
+          - alert_type="gitops"
+        route_to:
+          - "slack://sre-gitops"
+          - "email://platform-team"
+        group_wait: "2m"
+        group_interval: "10m"
+        repeat_interval: "2h"
+        
+      deployment_metrics_alerts:
+        matchers:
+          - alert_type="deployment_metrics"
+        route_to:
+          - "slack://sre-metrics"
+          - "email://sre-team"
+        group_wait: "1h"
+        group_interval: "24h"
+        repeat_interval: "24h"
+    
+    # Inhibition rules to prevent alert storms during deployments
+    inhibition_rules:
+      - source_matchers:
+          - alertname="DeploymentSLOViolation"
+        target_matchers:
+          - alertname=~"HighErrorRate|ElevatedErrorRate"
+        equal: ["service"]
+        
+      - source_matchers:
+          - alertname="ArgoCD-SyncFailure"
+        target_matchers:
+          - alert_type="deployment"
+        equal: ["service"]

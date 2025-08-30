@@ -1,0 +1,135 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sre-demo-app
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: sre-demo-app
+    app.kubernetes.io/part-of: sre-demo-platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  # Source repository configuration
+  source:
+    repoURL: https://github.com/YOUR_USERNAME/kubernetes-sre-cloud-native
+    targetRevision: main
+    path: exercises/exercise6/k8s
+    
+    # Directory configuration for plain YAML manifests
+    directory:
+      recurse: true
+      exclude: "argocd-app.yaml"  # Don't sync self
+      
+  # Destination cluster and namespace
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+    
+  # Synchronization policy
+  syncPolicy:
+    automated:
+      prune: true      # Remove resources not defined in Git
+      selfHeal: true   # Correct drift from desired state
+      allowEmpty: false
+    
+    # Sync options
+    syncOptions:
+    - CreateNamespace=true    # Create namespace if it doesn't exist
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true         # Prune resources after sync
+    - RespectIgnoreDifferences=true
+    
+    # Retry configuration for failed syncs
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+        
+  # Health check and sync configuration
+  revisionHistoryLimit: 10
+  
+  # Ignore differences in certain fields
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/template/metadata/annotations/deployment.timestamp
+  - group: ""
+    kind: Service
+    jsonPointers:
+    - /spec/loadBalancerSourceRanges
+    
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: sre-demo-project
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: sre-demo-project
+spec:
+  description: SRE Demo Application Project
+  
+  # Source repositories that applications in this project can use
+  sourceRepos:
+  - 'https://github.com/*/kubernetes-sre-cloud-native'
+  - 'https://github.com/*/sre-demo-*'
+  
+  # Destination clusters and namespaces
+  destinations:
+  - namespace: 'default'
+    server: https://kubernetes.default.svc
+  - namespace: 'sre-demo-*'
+    server: https://kubernetes.default.svc
+    
+  # Cluster resource whitelist
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: 'rbac.authorization.k8s.io'
+    kind: ClusterRole
+  - group: 'rbac.authorization.k8s.io'
+    kind: ClusterRoleBinding
+    
+  # Namespace resource whitelist
+  namespaceResourceWhitelist:
+  - group: 'apps'
+    kind: Deployment
+  - group: 'apps'
+    kind: ReplicaSet
+  - group: ''
+    kind: Service
+  - group: ''
+    kind: ConfigMap
+  - group: ''
+    kind: Secret
+  - group: ''
+    kind: Pod
+  - group: 'autoscaling'
+    kind: HorizontalPodAutoscaler
+  - group: 'networking.k8s.io'
+    kind: Ingress
+    
+  # Roles for this project
+  roles:
+  - name: admin
+    description: Admin role for SRE Demo Project
+    policies:
+    - p, proj:sre-demo-project:admin, applications, *, sre-demo-project/*, allow
+    - p, proj:sre-demo-project:admin, repositories, *, *, allow
+    groups:
+    - sre-team
+    
+  - name: developer
+    description: Developer role with limited permissions
+    policies:
+    - p, proj:sre-demo-project:developer, applications, get, sre-demo-project/*, allow
+    - p, proj:sre-demo-project:developer, applications, sync, sre-demo-project/*, allow
+    groups:
+    - dev-team

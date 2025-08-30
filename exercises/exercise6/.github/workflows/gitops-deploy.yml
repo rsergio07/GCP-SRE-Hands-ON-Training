@@ -1,0 +1,252 @@
+name: GitOps Deployment Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths: 
+      - 'exercises/exercise6/**'
+      - '.github/workflows/gitops-deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths: 
+      - 'exercises/exercise6/**'
+
+env:
+  REGISTRY: gcr.io
+  IMAGE_NAME: sre-demo-app
+  DEPLOYMENT_TIMEOUT: 600
+
+jobs:
+  test-application:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        cd exercises/exercise6
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Install testing and linting tools
+      run: |
+        pip install flake8 bandit pytest
+        
+    - name: Lint Python code
+      run: |
+        cd exercises/exercise6
+        flake8 app/ --max-line-length=88 --ignore=E203,W503 --exclude=__pycache__
+        
+    - name: Run security analysis
+      run: |
+        cd exercises/exercise6
+        bandit -r app/ -f json || true
+        
+    - name: Test application startup
+      run: |
+        cd exercises/exercise6
+        timeout 10s python -m app.main || true
+
+  build-and-push:
+    needs: test-application
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      
+    - name: Configure Docker to use gcloud as credential helper
+      run: gcloud auth configure-docker
+      
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=gitops-{{sha}},enable={{is_default_branch}}
+          
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: exercises/exercise6
+        file: exercises/exercise6/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64
+        build-args: |
+          GIT_COMMIT=${{ github.sha }}
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+        
+    - name: Run Trivy vulnerability scanner
+      run: |
+        sudo apt-get update
+        sudo apt-get install wget apt-transport-https gnupg lsb-release
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy
+        
+        trivy image --exit-code 0 --severity HIGH,CRITICAL \
+          ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest
+
+  update-manifests:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Set up environment variables
+      run: |
+        echo "NEW_IMAGE_TAG=gitops-${{ github.sha }}" >> $GITHUB_ENV
+        echo "DEPLOYMENT_ID=deploy-$(date +%s)" >> $GITHUB_ENV
+        echo "TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+        
+    - name: Update Kubernetes manifests
+      run: |
+        # Update deployment image
+        sed -i "s|gcr.io/PROJECT_ID/sre-demo-app:.*|gcr.io/${{ secrets.GCP_PROJECT_ID }}/sre-demo-app:$NEW_IMAGE_TAG|g" exercises/exercise6/k8s/deployment.yaml
+        
+        # Update deployment timestamp
+        sed -i "s|deployment.timestamp:.*|deployment.timestamp: \"$TIMESTAMP\"|g" exercises/exercise6/k8s/deployment.yaml
+        
+        # Update version labels
+        sed -i "s|version: v.*|version: v1.2.0-${{ github.sha }}|g" exercises/exercise6/k8s/deployment.yaml
+        
+        # Update environment variables
+        sed -i "s|value: \"unknown\"|value: \"${{ github.sha }}\"|g" exercises/exercise6/k8s/deployment.yaml
+        sed -i "s|value: \"gitops\"|value: \"$DEPLOYMENT_ID\"|g" exercises/exercise6/k8s/deployment.yaml
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        git add exercises/exercise6/k8s/deployment.yaml
+        git commit -m "GitOps: Update image to $NEW_IMAGE_TAG [skip ci]" || exit 0
+        git push
+        
+    - name: Create deployment summary
+      run: |
+        echo "## GitOps Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: \`${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:$NEW_IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Deployment ID**: \`$DEPLOYMENT_ID\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Timestamp**: \`$TIMESTAMP\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **ArgoCD will automatically sync these changes**" >> $GITHUB_STEP_SUMMARY
+
+  validate-deployment:
+    needs: [build-and-push, update-manifests]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      
+    - name: Configure kubectl
+      run: |
+        gcloud container clusters get-credentials sre-demo-cluster --location us-central1 --project ${{ secrets.GCP_PROJECT_ID }}
+        
+    - name: Wait for ArgoCD sync and validate deployment
+      timeout-minutes: 10
+      run: |
+        echo "Waiting for ArgoCD to sync the new deployment..."
+        
+        # Wait for deployment to be updated by ArgoCD
+        EXPECTED_IMAGE="gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:gitops-${{ github.sha }}"
+        
+        for i in {1..60}; do
+          CURRENT_IMAGE=$(kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].image}' || echo "")
+          
+          if [[ "$CURRENT_IMAGE" == "$EXPECTED_IMAGE" ]]; then
+            echo "✅ ArgoCD has synced the new image: $CURRENT_IMAGE"
+            break
+          fi
+          
+          echo "⏳ Waiting for ArgoCD sync... Current image: $CURRENT_IMAGE (attempt $i/60)"
+          sleep 10
+        done
+        
+        if [[ "$CURRENT_IMAGE" != "$EXPECTED_IMAGE" ]]; then
+          echo "❌ ArgoCD sync timeout. Expected: $EXPECTED_IMAGE, Got: $CURRENT_IMAGE"
+          exit 1
+        fi
+        
+        # Wait for deployment to be ready
+        echo "Waiting for deployment to be ready..."
+        kubectl wait --for=condition=available --timeout=300s deployment/sre-demo-app
+        
+        # Basic health validation
+        kubectl get pods -l app=sre-demo-app
+        
+        echo "🎉 Deployment validation completed successfully!"
+        
+    - name: Run post-deployment validation
+      run: |
+        # Get service external IP
+        EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        
+        if [[ -n "$EXTERNAL_IP" && "$EXTERNAL_IP" != "null" ]]; then
+          echo "Testing deployment endpoint..."
+          
+          # Test health endpoint
+          for i in {1..10}; do
+            if curl -f "http://$EXTERNAL_IP/health" > /dev/null 2>&1; then
+              echo "✅ Health check passed"
+              break
+            fi
+            echo "⏳ Waiting for service to be ready... (attempt $i/10)"
+            sleep 10
+          done
+          
+          # Test deployment info endpoint
+          curl -f "http://$EXTERNAL_IP/deployment" || echo "⚠️ Deployment endpoint not accessible yet"
+          
+        else
+          echo "⚠️ External IP not yet available, skipping external validation"
+        fi
+        
+        echo "GitOps deployment pipeline completed successfully! 🚀"
