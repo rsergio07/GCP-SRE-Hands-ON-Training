@@ -1,0 +1,18 @@
+displayName: "SRE Demo App - Availability Alert Policy"
+conditions:
+  - displayName: "Availability SLO Burn Rate"
+    conditionThreshold:
+      filter: 'resource.type="gke_container" AND resource.label.container_name="sre-demo-app"'
+      aggregations:
+        - alignmentPeriod: "300s"
+          perSeriesAligner: "ALIGN_RATE"
+          crossSeriesReducer: "REDUCE_SUM"
+          groupByFields:
+            - "resource.label.container_name"
+      comparison: "COMPARISON_GREATER_THAN"
+      thresholdValue: 0.05
+      duration: "300s"
+notificationChannels:
+  - "projects/PROJECT_ID/notificationChannels/CHANNEL_ID"
+alertStrategy:
+  autoClose: "1800s"

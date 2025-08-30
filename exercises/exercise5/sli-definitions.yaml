@@ -1,1 +1,91 @@
-[Copy content from exercise5-sli-definitions artifact]
+# Service Level Indicators (SLIs) for SRE Demo Application
+# These SLIs measure what users care about: availability, latency, and quality
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sli-definitions
+  namespace: default
+  labels:
+    app: sre-demo-app
+    component: sli
+data:
+  # Availability SLI - Percentage of successful requests
+  availability-sli.yaml: |
+    name: "availability"
+    description: "Percentage of HTTP requests that return successful status codes (2xx, 3xx, 4xx)"
+    query: |
+      sum(rate(http_requests_total{status_code!~"5.."}[5m])) /
+      sum(rate(http_requests_total[5m])) * 100
+    unit: "percent"
+    good_events_query: |
+      sum(rate(http_requests_total{status_code!~"5.."}[5m]))
+    total_events_query: |
+      sum(rate(http_requests_total[5m]))
+    rationale: |
+      Users expect the service to be available when they need it.
+      Server errors (5xx) indicate service unavailability from user perspective.
+      Client errors (4xx) are typically user mistakes and don't indicate service problems.
+
+  # Latency SLI - Percentage of requests served within acceptable time
+  latency-sli.yaml: |
+    name: "latency"
+    description: "Percentage of HTTP requests completed within 500ms"
+    query: |
+      sum(rate(http_request_duration_seconds_bucket{le="0.5"}[5m])) /
+      sum(rate(http_request_duration_seconds_count[5m])) * 100
+    unit: "percent"
+    good_events_query: |
+      sum(rate(http_request_duration_seconds_bucket{le="0.5"}[5m]))
+    total_events_query: |
+      sum(rate(http_request_duration_seconds_count[5m]))
+    rationale: |
+      Users expect fast response times for web applications.
+      500ms is a reasonable threshold for user-facing web services.
+      Requests taking longer than 500ms may indicate performance problems.
+
+  # Quality SLI - Percentage of successful business operations
+  quality-sli.yaml: |
+    name: "quality"
+    description: "Percentage of business operations that complete successfully"
+    query: |
+      sum(rate(business_operations_total{status="success"}[5m])) /
+      sum(rate(business_operations_total[5m])) * 100
+    unit: "percent"
+    good_events_query: |
+      sum(rate(business_operations_total{status="success"}[5m]))
+    total_events_query: |
+      sum(rate(business_operations_total[5m]))
+    rationale: |
+      Business operations represent core functionality that users depend on.
+      Failed business operations directly impact user experience and satisfaction.
+      This SLI captures functional correctness beyond basic availability.
+
+  # Additional SLI - Error Rate
+  error-rate-sli.yaml: |
+    name: "error_rate"
+    description: "Percentage of HTTP requests that return server errors (5xx)"
+    query: |
+      sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
+      sum(rate(http_requests_total[5m])) * 100
+    unit: "percent"
+    good_events_query: |
+      sum(rate(http_requests_total{status_code!~"5.."}[5m]))
+    total_events_query: |
+      sum(rate(http_requests_total[5m]))
+    rationale: |
+      Inverse of availability SLI, useful for alerting on degradation.
+      Error rate increases are early indicators of problems.
+      Helps distinguish between availability and performance issues.
+
+  # Throughput SLI - Request processing capacity
+  throughput-sli.yaml: |
+    name: "throughput"
+    description: "Requests processed per second during peak hours"
+    query: |
+      sum(rate(http_requests_total[5m]))
+    unit: "requests_per_second"
+    rationale: |
+      Measures service capacity and helps identify scaling needs.
+      Important for understanding service performance under load.
+      Not a traditional good/bad events SLI but important for capacity planning.

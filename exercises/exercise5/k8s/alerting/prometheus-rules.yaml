@@ -1,1 +1,250 @@
-[Copy content from exercise5-prometheus-rules artifact]
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alerts
+  namespace: default
+  labels:
+    app: prometheus
+data:
+  alerts.yml: |
+    groups:
+    # High Severity Alerts - Immediate Response Required
+    - name: sre-demo-critical
+      interval: 30s
+      rules:
+      # Service Unavailable - Critical
+      - alert: ServiceUnavailable
+        expr: up{job="sre-demo-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "SRE Demo App service is unavailable"
+          description: "The SRE Demo App service has been unavailable for more than 1 minute. No metrics are being received."
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/unavailable.md"
+          
+      # High Error Rate - Critical  
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
+            sum(rate(http_requests_total[5m]))
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "High error rate detected: {{ $value | humanizePercentage }}"
+          description: "Error rate has been above 5% for more than 2 minutes. Current rate: {{ $value | humanizePercentage }}"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/high-error-rate.md"
+          
+      # Extreme Latency - Critical
+      - alert: ExtremeLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2.0
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "Extreme latency detected: {{ $value }}s"
+          description: "95th percentile latency has been above 2 seconds for more than 5 minutes"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/high-latency.md"
+
+    # Warning Alerts - Investigation Required
+    - name: sre-demo-warning
+      interval: 30s
+      rules:
+      # Elevated Error Rate - Warning
+      - alert: ElevatedErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
+            sum(rate(http_requests_total[5m]))
+          ) * 100 > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "Elevated error rate: {{ $value | humanizePercentage }}"
+          description: "Error rate has been above 1% for more than 5 minutes. Current rate: {{ $value | humanizePercentage }}"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/elevated-errors.md"
+          
+      # High Latency - Warning
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "High latency detected: {{ $value }}s"
+          description: "95th percentile latency has been above 800ms for more than 5 minutes"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/latency-investigation.md"
+
+      # Low Business Operation Success Rate - Warning
+      - alert: BusinessOperationFailures
+        expr: |
+          (
+            sum(rate(business_operations_total{status="success"}[5m])) /
+            sum(rate(business_operations_total[5m]))
+          ) * 100 < 95
+        for: 3m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "Business operation success rate low: {{ $value | humanizePercentage }}"
+          description: "Business operation success rate has been below 95% for more than 3 minutes"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/business-operations.md"
+
+      # High Memory Usage - Warning
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            sum(container_memory_working_set_bytes{pod=~"sre-demo-app-.*"}) /
+            sum(container_spec_memory_limit_bytes{pod=~"sre-demo-app-.*"})
+          ) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "High memory usage: {{ $value | humanizePercentage }}"
+          description: "Memory usage has been above 80% for more than 10 minutes"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/resource-usage.md"
+
+      # High CPU Usage - Warning  
+      - alert: HighCPUUsage
+        expr: |
+          (
+            sum(rate(container_cpu_usage_seconds_total{pod=~"sre-demo-app-.*"}[5m])) /
+            sum(container_spec_cpu_quota{pod=~"sre-demo-app-.*"} / container_spec_cpu_period{pod=~"sre-demo-app-.*"})
+          ) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "High CPU usage: {{ $value | humanizePercentage }}"
+          description: "CPU usage has been above 80% for more than 10 minutes"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/resource-usage.md"
+
+    # SLO Burn Rate Alerts - Multi-window, multi-burn-rate
+    - name: sre-demo-slo-alerts
+      interval: 30s
+      rules:
+      # Fast Burn Rate Alert (2% budget in 1 hour)
+      - alert: AvailabilitySLOFastBurn
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code=~"5.."}[1h])) /
+            sum(rate(http_requests_total[1h]))
+          ) > (14.4 * 0.005)  # 14.4x burn rate for 99.5% SLO
+        for: 2m
+        labels:
+          severity: critical
+          team: sre
+          service: sre-demo-app
+          alert_type: slo_burn_rate
+        annotations:
+          summary: "Fast SLO burn rate detected"
+          description: "At current rate, availability SLO will be exhausted in {{ $value }} hours"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/slo-burn-rate.md"
+
+      # Slow Burn Rate Alert (10% budget in 6 hours)  
+      - alert: AvailabilitySLOSlowBurn
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code=~"5.."}[6h])) /
+            sum(rate(http_requests_total[6h]))
+          ) > (6 * 0.005)  # 6x burn rate for 99.5% SLO
+        for: 15m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+          alert_type: slo_burn_rate
+        annotations:
+          summary: "Slow SLO burn rate detected"
+          description: "At current rate, availability SLO budget will be exhausted"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/slo-burn-rate.md"
+
+    # Infrastructure Alerts
+    - name: sre-demo-infrastructure
+      interval: 60s
+      rules:
+      # Pod Restart Rate - Warning
+      - alert: PodRestartingFrequently
+        expr: |
+          increase(kube_pod_container_status_restarts_total{pod=~"sre-demo-app-.*"}[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "Pod {{ $labels.pod }} restarting frequently"
+          description: "Pod has restarted {{ $value }} times in the last hour"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/pod-restarts.md"
+
+      # HPA Scaling Issues - Warning
+      - alert: HPAScalingIssues
+        expr: |
+          kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler="sre-demo-hpa"} >=
+          kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler="sre-demo-hpa"}
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "HPA has reached maximum replicas"
+          description: "Horizontal Pod Autoscaler has scaled to maximum replicas, service may be under-provisioned"
+          runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/scaling-limits.md"
+
+    # Informational Alerts
+    - name: sre-demo-info
+      interval: 300s  # 5 minutes
+      rules:
+      # Deployment Events - Info
+      - alert: DeploymentEvent
+        expr: |
+          changes(application_info[10m]) > 0
+        for: 0s
+        labels:
+          severity: info
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "Application deployment detected"
+          description: "New version deployment detected: {{ $labels.version }}"
+          
+      # Low Traffic - Info
+      - alert: LowTraffic
+        expr: |
+          sum(rate(http_requests_total[5m])) < 0.1
+        for: 30m
+        labels:
+          severity: info
+          team: sre
+          service: sre-demo-app
+        annotations:
+          summary: "Low traffic detected"
+          description: "Request rate has been below 0.1 requests/second for 30 minutes"

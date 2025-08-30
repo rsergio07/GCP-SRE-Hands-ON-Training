@@ -1,0 +1,14 @@
+displayName: "SRE Demo App - Error Budget Alert Policy"
+conditions:
+  - displayName: "Error Budget Burn Rate"
+    conditionThreshold:
+      filter: 'resource.type="gke_container" AND metric.type="prometheus.googleapis.com/http_requests_total/counter"'
+      aggregations:
+        - alignmentPeriod: "3600s"
+          perSeriesAligner: "ALIGN_RATE"
+          crossSeriesReducer: "REDUCE_SUM"
+      comparison: "COMPARISON_GREATER_THAN"
+      thresholdValue: 0.072
+      duration: "120s"
+notificationChannels:
+  - "projects/PROJECT_ID/notificationChannels/CHANNEL_ID"

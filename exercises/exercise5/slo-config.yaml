@@ -1,1 +1,132 @@
-[Copy content from exercise5-slo-config artifact]
+# Service Level Objectives (SLOs) for SRE Demo Application
+# These SLOs set reliability targets based on business requirements and user expectations
+
+# Availability SLO - 99.5% of requests should be successful
+displayName: "SRE Demo App - Availability SLO"
+serviceLevelObjective:
+  name: "availability-slo"
+  displayName: "Availability SLO - 99.5%"
+  serviceLevelIndicator:
+    requestBased:
+      good:
+        filter: 'resource.type="gke_container" AND resource.label.container_name="sre-demo-app" AND metric.type="prometheus.googleapis.com/http_requests_total/counter" AND metric.label.status_code!~"5.."'
+      total:
+        filter: 'resource.type="gke_container" AND resource.label.container_name="sre-demo-app" AND metric.type="prometheus.googleapis.com/http_requests_total/counter"'
+  goal:
+    performanceGoal:
+      threshold: 0.995  # 99.5%
+  rollingPeriod: "2592000s"  # 30 days
+  
+---
+# Latency SLO - 95% of requests should complete within 500ms  
+displayName: "SRE Demo App - Latency SLO"
+serviceLevelObjective:
+  name: "latency-slo"
+  displayName: "Latency SLO - 95% under 500ms"
+  serviceLevelIndicator:
+    requestBased:
+      good:
+        filter: 'resource.type="gke_container" AND resource.label.container_name="sre-demo-app" AND metric.type="prometheus.googleapis.com/http_request_duration_seconds/histogram" AND metric.label.le="0.5"'
+      total:
+        filter: 'resource.type="gke_container" AND resource.label.container_name="sre-demo-app" AND metric.type="prometheus.googleapis.com/http_request_duration_seconds/histogram"'
+  goal:
+    performanceGoal:
+      threshold: 0.95   # 95%
+  rollingPeriod: "2592000s"  # 30 days
+
+---
+# Quality SLO - 99% of business operations should succeed
+displayName: "SRE Demo App - Quality SLO"  
+serviceLevelObjective:
+  name: "quality-slo"
+  displayName: "Quality SLO - 99% business success"
+  serviceLevelIndicator:
+    requestBased:
+      good:
+        filter: 'resource.type="gke_container" AND resource.label.container_name="sre-demo-app" AND metric.type="prometheus.googleapis.com/business_operations_total/counter" AND metric.label.status="success"'
+      total:
+        filter: 'resource.type="gke_container" AND resource.label.container_name="sre-demo-app" AND metric.type="prometheus.googleapis.com/business_operations_total/counter"'
+  goal:
+    performanceGoal:
+      threshold: 0.99   # 99%
+  rollingPeriod: "604800s"   # 7 days (shorter period for business operations)
+
+---
+# SLO Configuration Metadata
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: slo-config
+  namespace: default
+  labels:
+    app: sre-demo-app
+    component: slo
+data:
+  # SLO targets and rationale
+  slo-targets.yaml: |
+    # SLO Target Selection Rationale
+    
+    availability_target: 99.5%
+    availability_rationale: |
+      - 99.5% allows for 3.6 hours of downtime per month
+      - Balances user experience with operational complexity
+      - Provides error budget for deployments and maintenance
+      - Industry standard for non-critical web services
+    
+    latency_target: 95%_under_500ms
+    latency_rationale: |
+      - 500ms is acceptable for web applications
+      - 95% threshold allows for some slow requests due to cold starts, GC, etc.
+      - Provides buffer for performance degradation detection
+      - Aligns with user experience expectations
+    
+    quality_target: 99%
+    quality_rationale: |
+      - Business operations are core functionality
+      - Higher standard than availability due to user impact
+      - Shorter measurement window (7 days) for faster feedback
+      - Allows for 1% operational errors (network issues, dependencies)
+
+  # Error Budget Calculations
+  error-budgets.yaml: |
+    # Error Budget Calculations (30-day rolling window)
+    
+    availability_error_budget:
+      target: 99.5%
+      allowed_failure_rate: 0.5%
+      monthly_error_budget: "3.6 hours"
+      calculation: "(100% - 99.5%) * 30 days * 24 hours"
+    
+    latency_error_budget:
+      target: 95%
+      allowed_slow_requests: 5%
+      monthly_slow_request_budget: "5% of all requests"
+      calculation: "(100% - 95%) * total monthly requests"
+    
+    quality_error_budget:
+      target: 99%
+      allowed_failure_rate: 1%
+      weekly_error_budget: "1.68 hours"
+      calculation: "(100% - 99%) * 7 days * 24 hours"
+
+  # SLO Review Schedule
+  slo-review.yaml: |
+    # SLO Review and Adjustment Schedule
+    
+    review_frequency: "Monthly"
+    review_participants:
+      - "SRE Team"
+      - "Product Team" 
+      - "Engineering Team"
+    
+    review_criteria:
+      - "Error budget consumption trends"
+      - "Incident patterns and user impact"
+      - "Business requirements changes"
+      - "Service maturity and stability"
+    
+    adjustment_triggers:
+      - "Consistent error budget exhaustion"
+      - "Frequent false positive alerts"
+      - "Business criticality changes"
+      - "User feedback and satisfaction metrics"
