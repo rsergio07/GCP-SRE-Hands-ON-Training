@@ -1,0 +1,238 @@
+---
+# Vertical Pod Autoscaler for cost optimization
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: sre-demo-vpa
+  namespace: default
+  labels:
+    cost.optimized: "true"
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sre-demo-app
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: sre-demo-app
+      maxAllowed:
+        cpu: "1000m"
+        memory: "512Mi"
+      minAllowed:
+        cpu: "50m"
+        memory: "64Mi"
+      controlledResources: ["cpu", "memory"]
+
+---
+# Enhanced HPA with custom metrics
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sre-demo-hpa-optimized
+  namespace: default
+  labels:
+    cost.optimized: "true"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sre-demo-app
+  minReplicas: 1  # Reduced minimum for cost savings
+  maxReplicas: 20 # Increased maximum for burst capacity
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  # Custom metrics for intelligent scaling
+  - type: Pods
+    pods:
+      metric:
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "100"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Longer stabilization for cost savings
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      selectPolicy: Min
+
+---
+# Priority Class for cost optimization
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: cost-optimized
+  labels:
+    cost.optimized: "true"
+value: 100
+globalDefault: false
+description: "Priority class for cost-optimized workloads"
+
+---
+# Node Affinity for spot instances
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cost-optimization-config
+  namespace: default
+  labels:
+    cost.optimized: "true"
+data:
+  spot-instance-preference: "true"
+  cost-optimization-level: "aggressive"
+  resource-efficiency-target: "80"
+  scaling-policy: |
+    # Cost-optimized scaling policy
+    scale_up_threshold: 70
+    scale_down_threshold: 30
+    scale_down_delay: 300
+    spot_instance_preference: true
+    preemptible_tolerance: high
+
+---
+# Pod Disruption Budget for cost-aware deployments
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sre-demo-pdb-cost-optimized
+  namespace: default
+  labels:
+    cost.optimized: "true"
+spec:
+  selector:
+    matchLabels:
+      app: sre-demo-app
+  maxUnavailable: 50%  # Allow higher disruption for cost savings
+
+---
+# Cluster Autoscaler configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-autoscaler-config
+  namespace: kube-system
+  labels:
+    cost.optimized: "true"
+data:
+  cluster-autoscaler-config: |
+    scale-down-enabled: true
+    scale-down-delay-after-add: 10m
+    scale-down-unneeded-time: 10m
+    scale-down-utilization-threshold: 0.5
+    skip-nodes-with-local-storage: false
+    skip-nodes-with-system-pods: false
+    max-node-provision-time: 15m
+    node-group-auto-discovery: "asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/sre-demo-cluster"
+
+---
+# Resource efficiency monitoring
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cost-monitoring-queries
+  namespace: default
+  labels:
+    cost.optimized: "true"
+data:
+  cost-queries.yaml: |
+    # Cost optimization queries
+    resource_efficiency:
+      cpu_efficiency: |
+        (
+          sum(rate(container_cpu_usage_seconds_total{pod=~"sre-demo-app-.*"}[5m])) /
+          sum(container_spec_cpu_quota{pod=~"sre-demo-app-.*"} / container_spec_cpu_period{pod=~"sre-demo-app-.*"})
+        ) * 100
+      memory_efficiency: |
+        (
+          sum(container_memory_working_set_bytes{pod=~"sre-demo-app-.*"}) /
+          sum(container_spec_memory_limit_bytes{pod=~"sre-demo-app-.*"})
+        ) * 100
+    cost_metrics:
+      cost_per_request: |
+        sum(cluster_cost_hourly) / sum(rate(http_requests_total[1h]))
+      resource_waste: |
+        sum(container_spec_memory_limit_bytes - container_memory_working_set_bytes) +
+        sum((container_spec_cpu_quota / container_spec_cpu_period) - rate(container_cpu_usage_seconds_total[5m]))
+
+---
+# Preemptible Node Pool Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: preemptible-config
+  namespace: default
+  labels:
+    cost.optimized: "true"
+data:
+  preemptible.yaml: |
+    # GKE Preemptible node configuration
+    node_pools:
+      - name: cost-optimized-pool
+        preemptible: true
+        machine_type: e2-medium
+        disk_size_gb: 50
+        disk_type: pd-standard
+        max_surge: 1
+        max_unavailable: 0
+        taints:
+        - key: spot-instance
+          value: "true"
+          effect: NoSchedule
+        tolerations:
+        - key: spot-instance
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+
+---
+# Cost-aware deployment strategy
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cost-deployment-strategy
+  namespace: default
+  labels:
+    cost.optimized: "true"
+data:
+  strategy.yaml: |
+    # Cost optimization deployment strategy
+    deployment_strategy:
+      primary_pool: preemptible
+      fallback_pool: standard
+      cost_threshold: 100  # USD per month
+      scaling_policy: cost-aware
+      
+    resource_limits:
+      cpu_efficiency_target: 70
+      memory_efficiency_target: 80
+      cost_per_request_target: 0.001
+      
+    scheduling_preferences:
+      - prefer_preemptible: true
+      - node_efficiency_threshold: 60
+      - cost_optimization_level: aggressive
