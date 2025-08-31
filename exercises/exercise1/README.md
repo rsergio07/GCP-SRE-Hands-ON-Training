@@ -59,7 +59,7 @@ Note: No local software installation is required. Everything runs in the cloud.
 
 ### SRE Observability Principles
 
-**Essential Watching** (15 minutes - Select 2-3 videos from playlist):
+**Essential Watching** (1 hour aprox):
 - [Site Reliability Engineering Playlist](https://www.youtube.com/playlist?list=PLIivdWyY5sqJrKl7D2u-gmis8h9K66qoj) by Google Cloud Tech - Official SRE concepts
 
 **Recommended videos from the playlist**:
