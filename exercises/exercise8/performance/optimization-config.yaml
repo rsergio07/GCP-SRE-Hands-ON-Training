@@ -1,0 +1,200 @@
+---
+# Advanced HPA with custom metrics
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sre-demo-hpa-advanced
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sre-demo-app
+  minReplicas: 2
+  maxReplicas: 50
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Pods
+    pods:
+      metric:
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "50"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 5
+        periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+
+---
+# Performance-optimized deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sre-demo-app-optimized
+  namespace: default
+  labels:
+    performance.optimized: "true"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 2
+  selector:
+    matchLabels:
+      app: sre-demo-app-optimized
+  template:
+    metadata:
+      labels:
+        app: sre-demo-app-optimized
+        performance.optimized: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: sre-demo-app
+        image: gcr.io/PROJECT_ID/sre-demo-app:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: GUNICORN_WORKERS
+          value: "4"
+        - name: GUNICORN_THREADS
+          value: "2"
+        - name: GUNICORN_TIMEOUT
+          value: "30"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+
+---
+# Performance monitoring service
+apiVersion: v1
+kind: Service
+metadata:
+  name: sre-demo-performance-headless
+  labels:
+    performance.optimized: "true"
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 8080
+    name: metrics
+  selector:
+    app: sre-demo-app-optimized
+
+---
+# Performance testing namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: performance-testing
+  labels:
+    purpose: performance-testing
+
+---
+# Resource quotas for performance testing
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: performance-test-quota
+  namespace: performance-testing
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "20"
+
+---
+# Node affinity for performance testing
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: performance-config
+  namespace: default
+data:
+  optimization.yaml: |
+    performance_targets:
+      p50_latency: 100ms
+      p95_latency: 300ms
+      p99_latency: 500ms
+      throughput: 1000rps
+      error_rate: <1%
+      availability: 99.9%
+    
+    optimization_strategies:
+      - name: connection_pooling
+        enabled: true
+        config:
+          max_connections: 100
+          connection_timeout: 30s
+      - name: caching
+        enabled: true
+        config:
+          cache_ttl: 300s
+          max_cache_size: 100MB
+      - name: compression
+        enabled: true
+        config:
+          gzip_level: 6
+    
+    capacity_planning:
+      growth_rate: 20%
+      peak_multiplier: 3
+      safety_margin: 25%

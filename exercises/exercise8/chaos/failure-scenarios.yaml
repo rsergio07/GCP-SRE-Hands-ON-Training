@@ -1,0 +1,161 @@
+---
+# Pod failure scenario
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: sre-demo-pod-chaos
+  namespace: default
+spec:
+  appinfo:
+    appns: default
+    applabel: "app=sre-demo-app"
+    appkind: "deployment"
+  chaosServiceAccount: litmus
+  experiments:
+  - name: pod-delete
+    spec:
+      components:
+        env:
+        - name: TOTAL_CHAOS_DURATION
+          value: "30"
+        - name: PODS_AFFECTED_PERC
+          value: "50"
+        - name: RANDOMNESS
+          value: "true"
+      probe:
+      - name: "availability-probe"
+        type: "httpProbe"
+        mode: "Continuous"
+        runProperties:
+          probeTimeout: 5
+          retry: 3
+          interval: 10
+          probePollingInterval: 2
+        httpProbe/inputs:
+          url: "http://sre-demo-service/health"
+          insecureSkipTLS: true
+          method:
+            get:
+              criteria: "=="
+              responseCode: "200"
+
+---
+# Network chaos scenario
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: sre-demo-network-chaos
+  namespace: default
+spec:
+  appinfo:
+    appns: default
+    applabel: "app=sre-demo-app"
+    appkind: "deployment"
+  chaosServiceAccount: litmus
+  experiments:
+  - name: pod-network-latency
+    spec:
+      components:
+        env:
+        - name: TOTAL_CHAOS_DURATION
+          value: "120"
+        - name: NETWORK_LATENCY
+          value: "2000"
+        - name: JITTER
+          value: "500"
+        - name: PODS_AFFECTED_PERC
+          value: "33"
+      probe:
+      - name: "latency-probe"
+        type: "cmdProbe"
+        mode: "Edge"
+        runProperties:
+          probeTimeout: 10
+          retry: 3
+          interval: 5
+        cmdProbe/inputs:
+          command: "curl -s -w %{time_total} http://sre-demo-service/ -o /dev/null"
+          source:
+            image: "curlimages/curl:latest"
+          comparator:
+            type: "float"
+            criteria: "<"
+            value: "5.0"
+
+---
+# Resource stress scenario
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: sre-demo-cpu-chaos
+  namespace: default
+spec:
+  appinfo:
+    appns: default
+    applabel: "app=sre-demo-app"
+    appkind: "deployment"
+  chaosServiceAccount: litmus
+  experiments:
+  - name: pod-cpu-hog
+    spec:
+      components:
+        env:
+        - name: TOTAL_CHAOS_DURATION
+          value: "180"
+        - name: CPU_CORES
+          value: "1"
+        - name: PODS_AFFECTED_PERC
+          value: "50"
+      probe:
+      - name: "performance-probe"
+        type: "promProbe"
+        mode: "Continuous"
+        runProperties:
+          probeTimeout: 5
+          retry: 3
+          interval: 10
+        promProbe/inputs:
+          endpoint: "http://prometheus-service:9090"
+          query: "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[2m]))"
+          comparator:
+            criteria: "<"
+            value: "3.0"
+
+---
+# Comprehensive failure scenario
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: sre-demo-comprehensive-chaos
+  namespace: default
+spec:
+  appinfo:
+    appns: default
+    applabel: "app=sre-demo-app"
+    appkind: "deployment"
+  chaosServiceAccount: litmus
+  experiments:
+  - name: pod-delete
+    spec:
+      components:
+        env:
+        - name: TOTAL_CHAOS_DURATION
+          value: "60"
+        - name: PODS_AFFECTED_PERC
+          value: "25"
+  - name: pod-network-latency
+    spec:
+      components:
+        env:
+        - name: TOTAL_CHAOS_DURATION
+          value: "90"
+        - name: NETWORK_LATENCY
+          value: "1000"
+  - name: pod-cpu-hog
+    spec:
+      components:
+        env:
+        - name: TOTAL_CHAOS_DURATION
+          value: "120"
+        - name: CPU_CORES
+          value: "0.5"

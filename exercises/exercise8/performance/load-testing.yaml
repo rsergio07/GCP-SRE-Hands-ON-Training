@@ -1,0 +1,162 @@
+---
+# K6 load testing deployment
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: load-test-script
+  namespace: default
+data:
+  load-test.js: |
+    import http from 'k6/http';
+    import { check, sleep } from 'k6';
+    import { Rate, Trend } from 'k6/metrics';
+
+    const errorRate = new Rate('errors');
+    const responseTime = new Trend('response_time');
+
+    export let options = {
+      stages: [
+        { duration: '2m', target: 10 },   // Ramp up
+        { duration: '5m', target: 50 },   // Stay at 50 users
+        { duration: '2m', target: 100 },  // Ramp to 100 users
+        { duration: '5m', target: 100 },  // Stay at 100 users
+        { duration: '2m', target: 0 },    // Ramp down
+      ],
+      thresholds: {
+        http_req_duration: ['p(95)<800'],
+        http_req_failed: ['rate<0.05'],
+        errors: ['rate<0.05'],
+      },
+    };
+
+    const BASE_URL = `http://${__ENV.TARGET_HOST}`;
+
+    export default function() {
+      // Test home endpoint
+      let response = http.get(`${BASE_URL}/`);
+      check(response, {
+        'home status 200': (r) => r.status === 200,
+        'home response time < 500ms': (r) => r.timings.duration < 500,
+      });
+      errorRate.add(response.status !== 200);
+      responseTime.add(response.timings.duration);
+
+      sleep(1);
+
+      // Test stores endpoint
+      response = http.get(`${BASE_URL}/stores`);
+      check(response, {
+        'stores status 200 or 503': (r) => [200, 503].includes(r.status),
+        'stores response time < 1000ms': (r) => r.timings.duration < 1000,
+      });
+      errorRate.add(![200, 503].includes(response.status));
+
+      sleep(1);
+
+      // Test health endpoint
+      response = http.get(`${BASE_URL}/health`);
+      check(response, {
+        'health status 200': (r) => r.status === 200,
+        'health response time < 200ms': (r) => r.timings.duration < 200,
+      });
+      errorRate.add(response.status !== 200);
+
+      sleep(2);
+    }
+
+---
+# Performance test job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: load-test-baseline
+  namespace: default
+  labels:
+    test-type: performance
+spec:
+  template:
+    spec:
+      containers:
+      - name: k6
+        image: grafana/k6:latest
+        env:
+        - name: TARGET_HOST
+          value: "sre-demo-service"
+        command:
+        - k6
+        - run
+        - --vus=50
+        - --duration=300s
+        - /scripts/load-test.js
+        volumeMounts:
+        - name: script-volume
+          mountPath: /scripts
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+      volumes:
+      - name: script-volume
+        configMap:
+          name: load-test-script
+      restartPolicy: Never
+  backoffLimit: 1
+
+---
+# Stress test configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stress-test-config
+  namespace: default
+data:
+  stress-test.js: |
+    import http from 'k6/http';
+    import { check } from 'k6';
+
+    export let options = {
+      stages: [
+        { duration: '1m', target: 200 },
+        { duration: '3m', target: 200 },
+        { duration: '1m', target: 0 },
+      ],
+      thresholds: {
+        http_req_duration: ['p(95)<2000'],
+        http_req_failed: ['rate<0.1'],
+      },
+    };
+
+    export default function() {
+      let response = http.get(`http://${__ENV.TARGET_HOST}/stores`);
+      check(response, {
+        'stress test response': (r) => r.status < 500,
+      });
+    }
+
+---
+# Spike test configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spike-test-config
+  namespace: default
+data:
+  spike-test.js: |
+    import http from 'k6/http';
+    import { check } from 'k6';
+
+    export let options = {
+      stages: [
+        { duration: '1m', target: 10 },
+        { duration: '30s', target: 300 },  // Spike
+        { duration: '2m', target: 10 },
+        { duration: '30s', target: 0 },
+      ],
+    };
+
+    export default function() {
+      http.get(`http://${__ENV.TARGET_HOST}/`);
+    }
