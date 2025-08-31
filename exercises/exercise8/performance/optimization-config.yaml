@@ -25,13 +25,6 @@ spec:
       target:
         type: Utilization
         averageUtilization: 70
-  - type: Pods
-    pods:
-      metric:
-        name: http_requests_per_second
-      target:
-        type: AverageValue
-        averageValue: "50"
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 30
@@ -48,94 +41,6 @@ spec:
       - type: Percent
         value: 25
         periodSeconds: 60
-
----
-# Performance-optimized deployment
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: sre-demo-app-optimized
-  namespace: default
-  labels:
-    performance.optimized: "true"
-spec:
-  replicas: 3
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 2
-  selector:
-    matchLabels:
-      app: sre-demo-app-optimized
-  template:
-    metadata:
-      labels:
-        app: sre-demo-app-optimized
-        performance.optimized: "true"
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: "/metrics"
-    spec:
-      containers:
-      - name: sre-demo-app
-        image: gcr.io/PROJECT_ID/sre-demo-app:latest
-        ports:
-        - containerPort: 8080
-        env:
-        - name: FLASK_ENV
-          value: "production"
-        - name: GUNICORN_WORKERS
-          value: "4"
-        - name: GUNICORN_THREADS
-          value: "2"
-        - name: GUNICORN_TIMEOUT
-          value: "30"
-        resources:
-          requests:
-            cpu: 200m
-            memory: 256Mi
-          limits:
-            cpu: 1000m
-            memory: 512Mi
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        lifecycle:
-          preStop:
-            exec:
-              command: ["/bin/sh", "-c", "sleep 15"]
-
----
-# Performance monitoring service
-apiVersion: v1
-kind: Service
-metadata:
-  name: sre-demo-performance-headless
-  labels:
-    performance.optimized: "true"
-  annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "8080"
-    prometheus.io/path: "/metrics"
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-  - port: 8080
-    name: metrics
-  selector:
-    app: sre-demo-app-optimized
 
 ---
 # Performance testing namespace
@@ -162,7 +67,7 @@ spec:
     pods: "20"
 
 ---
-# Node affinity for performance testing
+# Performance optimization ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -198,3 +103,46 @@ data:
       growth_rate: 20%
       peak_multiplier: 3
       safety_margin: 25%
+
+---
+# Pod Disruption Budget for availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sre-demo-pdb
+  namespace: default
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sre-demo-app
+
+---
+# Network Policy for performance testing isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: performance-test-isolation
+  namespace: performance-testing
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: performance-testing
+    - namespaceSelector:
+        matchLabels:
+          name: default
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: default
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
