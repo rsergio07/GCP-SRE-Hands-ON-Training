@@ -62,11 +62,6 @@ Note: No local software installation is required. Everything runs in the cloud.
 **Essential Watching** (1 hour aprox):
 - [Site Reliability Engineering Playlist](https://www.youtube.com/playlist?list=PLIivdWyY5sqJrKl7D2u-gmis8h9K66qoj) by Google Cloud Tech - Official SRE concepts
 
-**Recommended videos from the playlist**:
-- "What is Site Reliability Engineering (SRE)?"
-- "SRE fundamentals: SLIs, SLAs and SLOs"
-- "How to monitor your applications"
-
 **Reference Documentation**:
 - [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/) - Foundational monitoring principles
 - [Google SRE Book - Service Level Objectives](https://sre.google/sre-book/service-level-objectives/) - SLO implementation guide
