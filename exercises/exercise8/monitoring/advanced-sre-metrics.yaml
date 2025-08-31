@@ -1,0 +1,361 @@
+---
+# Advanced SRE metrics for comprehensive observability
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: advanced-sre-metrics
+  namespace: default
+  labels:
+    app: sre-monitoring
+data:
+  advanced-recording-rules.yml: |
+    groups:
+    - name: sre.advanced_sli
+      interval: 30s
+      rules:
+      # Availability SLI
+      - record: sre:availability:ratio_rate5m
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code!~"5.."}[5m])) by (job)
+          /
+            sum(rate(http_requests_total[5m])) by (job)
+          )
+      
+      # Latency SLI (P95)
+      - record: sre:latency:p95_5m
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le)
+          )
+      
+      # Latency SLI (P99)
+      - record: sre:latency:p99_5m
+        expr: |
+          histogram_quantile(0.99, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le)
+          )
+      
+      # Throughput SLI
+      - record: sre:throughput:rate5m
+        expr: |
+          sum(rate(http_requests_total[5m])) by (job)
+      
+      # Error budget burn rate
+      - record: sre:error_budget:burn_rate_5m
+        expr: |
+          (
+            1 - sre:availability:ratio_rate5m
+          ) * 12 * 60 * 24 * 30  # 30-day error budget
+      
+      # Resource utilization SLIs
+      - record: sre:cpu:utilization_5m
+        expr: |
+          avg(rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])) by (pod, namespace)
+      
+      - record: sre:memory:utilization_5m
+        expr: |
+          avg(container_memory_working_set_bytes{container!="POD",container!=""}) by (pod, namespace)
+          / avg(container_spec_memory_limit_bytes{container!="POD",container!=""}) by (pod, namespace)
+
+    - name: sre.business_metrics
+      interval: 60s
+      rules:
+      # Request volume by endpoint
+      - record: sre:requests_by_endpoint:rate5m
+        expr: |
+          sum(rate(http_requests_total[5m])) by (path, method)
+      
+      # Error rate by endpoint
+      - record: sre:errors_by_endpoint:rate5m
+        expr: |
+          sum(rate(http_requests_total{status_code=~"5.."}[5m])) by (path, method)
+          / sum(rate(http_requests_total[5m])) by (path, method)
+      
+      # User experience metrics
+      - record: sre:user_experience:apdex
+        expr: |
+          (
+            sum(rate(http_request_duration_seconds_bucket{le="0.1"}[5m]))
+            + sum(rate(http_request_duration_seconds_bucket{le="0.4"}[5m]))
+          ) / (2 * sum(rate(http_requests_total[5m])))
+
+---
+# Advanced alerting rules for SRE
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: advanced-sre-alerts
+  namespace: default
+  labels:
+    app: sre-monitoring
+data:
+  advanced-alerting-rules.yml: |
+    groups:
+    - name: sre.slo_alerts
+      rules:
+      # High error budget burn rate
+      - alert: HighErrorBudgetBurnRate
+        expr: sre:error_budget:burn_rate_5m > 20
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "High error budget burn rate detected"
+          description: "Error budget burning at {{ $value }}x normal rate"
+      
+      # SLO violation: Availability
+      - alert: SLOAvailabilityViolation
+        expr: sre:availability:ratio_rate5m < 0.995
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "Availability SLO violation"
+          description: "Availability {{ $value }} below 99.5% SLO"
+      
+      # SLO violation: Latency
+      - alert: SLOLatencyViolation
+        expr: sre:latency:p95_5m > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "Latency SLO violation"
+          description: "P95 latency {{ $value }}s above 500ms SLO"
+
+    - name: sre.capacity_alerts
+      rules:
+      # High CPU utilization
+      - alert: HighCPUUtilization
+        expr: sre:cpu:utilization_5m > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          team: sre
+        annotations:
+          summary: "High CPU utilization"
+          description: "Pod {{ $labels.pod }} CPU utilization {{ $value }}"
+      
+      # Memory pressure
+      - alert: HighMemoryUtilization
+        expr: sre:memory:utilization_5m > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          team: sre
+        annotations:
+          summary: "High memory utilization"
+          description: "Pod {{ $labels.pod }} memory utilization {{ $value }}"
+      
+      # Scaling event
+      - alert: HPAScalingEvent
+        expr: increase(kube_hpa_status_current_replicas[5m]) > 2
+        for: 0m
+        labels:
+          severity: info
+          team: sre
+        annotations:
+          summary: "HPA scaling event"
+          description: "HPA {{ $labels.hpa }} scaled to {{ $value }} replicas"
+
+---
+# ServiceMonitor for advanced metrics collection
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sre-demo-advanced-metrics
+  namespace: default
+  labels:
+    app: sre-demo-app
+spec:
+  selector:
+    matchLabels:
+      app: sre-demo-service
+  endpoints:
+  - port: http
+    interval: 15s
+    path: /metrics
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'http_request_duration_seconds_bucket|http_requests_total|process_cpu_seconds_total|process_resident_memory_bytes'
+      action: keep
+
+---
+# PrometheusRule for advanced SRE metrics
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sre-advanced-rules
+  namespace: default
+  labels:
+    app: sre-monitoring
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: sre.golden_signals
+    interval: 30s
+    rules:
+    # Latency: P50, P95, P99 response times
+    - record: sre:latency:p50
+      expr: histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, instance))
+    - record: sre:latency:p95
+      expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, instance))
+    - record: sre:latency:p99
+      expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, instance))
+    
+    # Traffic: Request rate
+    - record: sre:traffic:rps
+      expr: sum(rate(http_requests_total[5m])) by (job, instance)
+    
+    # Errors: Error rate percentage
+    - record: sre:errors:rate
+      expr: sum(rate(http_requests_total{status_code=~"5.."}[5m])) by (job, instance) / sum(rate(http_requests_total[5m])) by (job, instance) * 100
+    
+    # Saturation: Resource utilization
+    - record: sre:saturation:cpu
+      expr: avg(1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)
+    - record: sre:saturation:memory
+      expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+  - name: sre.reliability_metrics
+    interval: 60s
+    rules:
+    # MTBF (Mean Time Between Failures)
+    - record: sre:reliability:mtbf_hours
+      expr: |
+        (time() - timestamp(
+          changes(up == 0)[1d:1m] != 0
+        )) / 3600
+    
+    # MTTR (Mean Time To Recovery)
+    - record: sre:reliability:mttr_minutes
+      expr: |
+        avg_over_time(
+          (timestamp(up == 1) - timestamp(up == 0 offset 1m))[1h:1m]
+        ) / 60
+    
+    # Change failure rate
+    - record: sre:deployment:failure_rate
+      expr: |
+        sum(increase(deployment_failed_total[24h])) / 
+        sum(increase(deployment_total[24h])) * 100
+
+---
+# Grafana dashboard config for advanced SRE metrics
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sre-advanced-dashboard
+  namespace: default
+  labels:
+    grafana_dashboard: "1"
+data:
+  sre-advanced-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Advanced SRE Metrics",
+        "tags": ["sre", "observability"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Service Level Indicators",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sre:availability:ratio_rate5m * 100",
+                "legendFormat": "Availability %",
+                "refId": "A"
+              },
+              {
+                "expr": "sre:latency:p95_5m * 1000",
+                "legendFormat": "P95 Latency (ms)",
+                "refId": "B"
+              },
+              {
+                "expr": "sre:throughput:rate5m",
+                "legendFormat": "Requests/sec",
+                "refId": "C"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Error Budget Burn Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sre:error_budget:burn_rate_5m",
+                "legendFormat": "Burn Rate",
+                "refId": "A"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+            "yAxes": [
+              {
+                "min": 0,
+                "max": 50,
+                "unit": "short"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Golden Signals Dashboard",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sre:latency:p50",
+                "legendFormat": "P50 Latency",
+                "refId": "A"
+              },
+              {
+                "expr": "sre:latency:p95",
+                "legendFormat": "P95 Latency",
+                "refId": "B"
+              },
+              {
+                "expr": "sre:traffic:rps",
+                "legendFormat": "RPS",
+                "refId": "C"
+              },
+              {
+                "expr": "sre:errors:rate",
+                "legendFormat": "Error Rate %",
+                "refId": "D"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+          }
+        ],
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        }
+      }
+    }
+
+---
+# PodMonitor for application-specific metrics
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: sre-demo-pod-monitor
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: sre-demo-app
+  podMetricsEndpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+    honorLabels: true
