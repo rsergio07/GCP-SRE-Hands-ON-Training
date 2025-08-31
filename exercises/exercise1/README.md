@@ -39,7 +39,7 @@ By completing this exercise, you will understand:
 
 Before starting this exercise, ensure you have completed:
 
-- Installation guide setup (../../installation.md)
+- [Installation Guide](../../installation.md)
 - GitHub account with Codespaces access
 - Forked this repository to your GitHub account
 
