@@ -79,18 +79,18 @@ Detailed setup instructions are available in the [installation guide](installati
 
 ## Course Structure
 
-| Exercise                           | Title                                           | Focus Area                                  |
-| ---------------------------------- | ----------------------------------------------- | ------------------------------------------- |
-| [Exercise 1](exercises/exercise1/) | Cloud Development Environment & SRE Application | GitHub Codespaces, Flask App, Observability |
-| [Exercise 2](exercises/exercise2/) | Container Builds & GitHub Actions               | Docker, CI/CD Pipelines, Container Registry |
-| [Exercise 3](exercises/exercise3/) | Kubernetes Deployment                           | GKE, kubectl, Service Management            |
-| [Exercise 4](exercises/exercise4/) | Cloud Monitoring Stack                          | Prometheus, Cloud Monitoring, Dashboards    |
-| [Exercise 5](exercises/exercise5/) | Alerting and Response                           | Alert Policies, SLOs, Incident Management   |
-| [Exercise 6](exercises/exercise6/) | Production CI/CD                                | GitOps, Automated Deployments, Rollbacks    |
-| [Exercise 7](exercises/exercise7/) | Production Readiness                            | Security, Cost Optimization, DR             |
-| [Exercise 8](exercises/exercise8/) | Advanced SRE Operations                         | Chaos Engineering, Performance Optimization |
+| Exercise | Title                                       | Duration | Focus Area                                  |
+|----------|---------------------------------------------|----------|---------------------------------------------|
+| [Exercise 1](exercises/exercise1/) | Cloud Development Environment & SRE Application | 120 min  | GitHub Codespaces, Flask App, Observability |
+| [Exercise 2](exercises/exercise2/) | Container Builds & GitHub Actions               | 120 min  | Docker, CI/CD Pipelines, Container Registry |
+| [Exercise 3](exercises/exercise3/) | Kubernetes Deployment                          | 120 min  | GKE, kubectl, Service Management            |
+| [Exercise 4](exercises/exercise4/) | Cloud Monitoring Stack                         | 120 min  | Prometheus, Cloud Monitoring, Dashboards    |
+| [Exercise 5](exercises/exercise5/) | Alerting and Response                          | 90 min   | Alert Policies, SLOs, Incident Management   |
+| [Exercise 6](exercises/exercise6/) | Production CI/CD                               | 120 min  | GitOps, Automated Deployments, Rollbacks    |
+| [Exercise 7](exercises/exercise7/) | Production Readiness                           | 120 min  | Security, Cost Optimization, DR             |
+| [Exercise 8](exercises/exercise8/) | Advanced SRE Operations                        | 90 min   | Chaos Engineering, Performance Optimization |
 
-**Total Duration**: \~16 hours of hands-on learning
+**Total Duration**: ~16 hours of hands-on learning
 
 ---
 
