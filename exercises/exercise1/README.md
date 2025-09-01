@@ -1,18 +1,19 @@
 # Exercise 1: Cloud Development Environment Setup
 
 ## Table of Contents
-- [Introduction](#introduction)
-- [Learning Objectives](#learning-objectives)
-- [Prerequisites](#prerequisites)
-- [Theory Foundation](#theory-foundation)
-- [Understanding the Application Structure](#understanding-the-application-structure)
-- [Setting Up Your Cloud Development Environment](#setting-up-your-cloud-development-environment)
-- [Exploring the SRE Application](#exploring-the-sre-application)
-- [Running and Testing the Application](#running-and-testing-the-application)
-- [Understanding Observability in Action](#understanding-observability-in-action)
-- [Final Objective](#final-objective)
-- [Troubleshooting](#troubleshooting)
-- [Next Steps](#next-steps)
+
+* [Introduction](#introduction)
+* [Learning Objectives](#learning-objectives)
+* [Prerequisites](#prerequisites)
+* [Theory Foundation](#theory-foundation)
+* [Understanding the Application Structure](#understanding-the-application-structure)
+* [Setting Up Your Cloud Development Environment](#setting-up-your-cloud-development-environment)
+* [Exploring the SRE Application](#exploring-the-sre-application)
+* [Running and Testing the Application](#running-and-testing-the-application)
+* [Understanding Observability in Action](#understanding-observability-in-action)
+* [Final Objective](#final-objective)
+* [Troubleshooting](#troubleshooting)
+* [Next Steps](#next-steps)
 
 ---
 
@@ -28,10 +29,10 @@ This approach eliminates local environment complexity while teaching you the clo
 
 By completing this exercise, you will understand:
 
-- **Cloud Development Workflows**: How modern teams develop software entirely in cloud environments
-- **SRE Application Patterns**: What makes an application "SRE-ready" from the beginning
-- **Observability Fundamentals**: How metrics, logging, and health checks work together
-- **Production-Ready Code Structure**: How to organize applications for reliability and maintainability
+* **Cloud Development Workflows**: How modern teams develop software entirely in cloud environments
+* **SRE Application Patterns**: What makes an application "SRE-ready" from the beginning
+* **Observability Fundamentals**: How metrics, logging, and health checks work together
+* **Production-Ready Code Structure**: How to organize applications for reliability and maintainability
 
 ---
 
@@ -39,9 +40,9 @@ By completing this exercise, you will understand:
 
 Before starting this exercise, ensure you have completed:
 
-- [Installation Guide](../../installation.md)
-- GitHub account with Codespaces access
-- Forked this repository to your GitHub account
+* [Installation Guide](../../installation.md)
+* GitHub account with Codespaces access
+* Forked this repository to your GitHub account
 
 Note: No local software installation is required. Everything runs in the cloud.
 
@@ -52,19 +53,23 @@ Note: No local software installation is required. Everything runs in the cloud.
 ### Cloud Development Environments
 
 **Essential Watching** (15 minutes):
-- [Development with GitHub Codespaces](https://www.youtube.com/watch?v=UClpu3s1Ul4) by Betabit - Comprehensive Codespaces tutorial
+
+* [Development with GitHub Codespaces](https://www.youtube.com/watch?v=UClpu3s1Ul4) by Betabit - Comprehensive Codespaces tutorial
 
 **Reference Documentation**:
-- [Official GitHub Codespaces Documentation](https://docs.github.com/en/codespaces) - Complete setup and usage guide
+
+* [Official GitHub Codespaces Documentation](https://docs.github.com/en/codespaces) - Complete setup and usage guide
 
 ### SRE Observability Principles
 
-**Essential Watching** (1 hour aprox):
-- [Site Reliability Engineering Playlist](https://www.youtube.com/playlist?list=PLIivdWyY5sqJrKl7D2u-gmis8h9K66qoj) by Google Cloud Tech - Official SRE concepts
+**Essential Watching** (1 hour approx):
+
+* [Site Reliability Engineering Playlist](https://www.youtube.com/playlist?list=PLIivdWyY5sqJrKl7D2u-gmis8h9K66qoj) by Google Cloud Tech - Official SRE concepts
 
 **Reference Documentation**:
-- [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/) - Foundational monitoring principles
-- [Google SRE Book - Service Level Objectives](https://sre.google/sre-book/service-level-objectives/) - SLO implementation guide
+
+* [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/) - Foundational monitoring principles
+* [Google SRE Book - Service Level Objectives](https://sre.google/sre-book/service-level-objectives/) - SLO implementation guide
 
 ### Key Concepts You'll Learn
 
@@ -108,7 +113,7 @@ The **main.py** file contains the heart of your application including the Flask 
 
 The **config.py** file handles configuration management across different environments. It manages settings through environment variables and provides sensible defaults for local development while allowing production overrides.
 
-The **requirements.txt** file specifies all Python dependencies including Flask for the web framework, prometheus_client for metrics collection, and structured logging libraries for better observability.
+The **requirements.txt** file specifies all Python dependencies including Flask for the web framework, prometheus\_client for metrics collection, and structured logging libraries for better observability.
 
 ---
 
@@ -128,7 +133,9 @@ Once your Codespace loads, install the cloud tools required for this course:
 # Install Google Cloud CLI
 curl -sSL https://sdk.cloud.google.com | bash
 exec -l $SHELL  # Reload shell to update PATH
+```
 
+```bash
 # Install kubectl (Kubernetes CLI)
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
@@ -144,11 +151,15 @@ Verify that all required tools are installed and working:
 ```bash
 # Check Python installation
 python3 --version
+```
 
+```bash
 # Check current location and repository structure
 pwd
 ls -la
+```
 
+```bash
 # Verify cloud tools are available
 docker --version
 kubectl version --client
@@ -166,24 +177,30 @@ You should see Python 3.11+, Docker, kubectl, and gcloud all installed and ready
 ```bash
 # Navigate to the exercise directory
 cd exercises/exercise1
+```
 
+```bash
 # Install the required Python packages
 pip install -r requirements.txt
 ```
 
-You're installing Flask for creating HTTP APIs, prometheus_client for exposing metrics that monitoring systems can collect, and structlog for advanced logging capabilities that provide better troubleshooting information.
+You're installing Flask for creating HTTP APIs, prometheus\_client for exposing metrics that monitoring systems can collect, and structlog for advanced logging capabilities that provide better troubleshooting information.
 
 ### Step 5: Examine the Application Configuration
 
 ```bash
 # Look at the application structure
 ls -la app/
+```
 
+```bash
 # Examine the dependencies
 cat requirements.txt
+```
 
+```bash
 # Check the configuration file structure
-head -20 app/config.py
+cat app/config.py
 ```
 
 Notice how the application is designed to work with environment variables. This allows the same code to run in development, testing, and production with different configurations without code changes.
@@ -203,39 +220,62 @@ You should see log messages showing the application starting, including the host
 
 ### Step 7: Test Application Endpoints
 
-Open a new terminal (keep the application running in the first terminal) using `Ctrl+Shift+` and test the different endpoints:
+Open a new terminal (keep the application running in the first terminal) using `Ctrl+Shift+` and test the endpoints:
 
 ```bash
-# Test the home endpoint
+# Test the home endpoint (basic connectivity)
 curl http://localhost:8080/
+```
 
-# Test the business logic endpoint
+```bash
+# Test the business logic endpoint (returns list of stores)
 curl http://localhost:8080/stores
+```
 
+```bash
 # Test a specific store
 curl http://localhost:8080/stores/1
+```
 
-# Test health check (important for Kubernetes)
+```bash
+# Test health check (liveness probe for Kubernetes)
 curl http://localhost:8080/health
+```
 
-# Test readiness check (also important for Kubernetes)
+```bash
+# Test readiness check (readiness probe for Kubernetes)
 curl http://localhost:8080/ready
 ```
 
-Observe that each request generates structured log entries in your first terminal. The health endpoint always returns success (liveness probe), while the ready endpoint occasionally returns 503 status (simulating real-world readiness checks). The stores endpoint sometimes returns errors, which simulates real application behavior and provides learning opportunities.
+**What you’ll see:**
+
+* `/` → returns a welcome message with environment, version, and health status.
+* `/stores` → simulates a real business endpoint, returning multiple stores with products, pricing, and stock levels.
+* `/stores/1` → fetches details for a specific store, including items and inventory.
+* `/health` → always returns `healthy`, simulating a **liveness probe** that Kubernetes uses to decide if a container should be restarted.
+* `/ready` → usually returns `ready`, but may occasionally return `503 Service Unavailable`. This simulates a **readiness probe**, teaching how Kubernetes stops routing traffic to pods that aren’t ready.
+
+**Why this matters:**
+
+* These endpoints are not just for demo — they map directly to **SRE principles**:
+
+  * Structured logging for observability.
+  * Liveness and readiness probes for Kubernetes reliability.
+  * Simulated failures in `/stores` and `/ready` to practice debugging and resilience testing.
 
 ### Understanding the Responses
 
 **Reference Documentation**:
-- [HTTP Status Codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) - Understanding 200, 503, and other response codes
-- [Kubernetes Health Checks](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/) - Official documentation on liveness and readiness probes
-- [REST API Basics](https://restfulapi.net/http-methods/) - Understanding GET requests and API design patterns
+
+* [HTTP Status Codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)
+* [Kubernetes Health Checks](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+* [REST API Basics](https://restfulapi.net/http-methods/)
 
 ### Step 8: Access via Browser
 
 GitHub Codespaces automatically detects your running application and offers browser access. Look for the notification popup about port 8080 being available, then click the globe icon next to port 8080 in the Ports tab. Test different endpoints in your browser including the root path, /stores for store data, and /health for health status.
 
-This port forwarding simulates how applications run in cloud environments and demonstrates how you access them for testing and monitoring purposes.
+If the popup does not appear, open the **Ports** tab manually, look for port `8080`, and click the globe icon to open it in your browser.
 
 ---
 
@@ -248,11 +288,29 @@ This port forwarding simulates how applications run in cloud environments and de
 curl http://localhost:8080/metrics
 ```
 
-You're seeing Prometheus-formatted metrics including HTTP request counts and durations, business operation metrics, application health indicators, and custom metrics specific to your application. These metrics allow SRE teams to understand application performance, detect issues, and set up intelligent alerting before problems affect users.
+You will see a stream of **Prometheus-formatted metrics**, which SRE teams use for observability. These include:
+
+* **Python runtime metrics** (garbage collection, memory, CPU usage)
+* **Application request metrics** (counts, durations, error rates)
+* **Custom business metrics** (operations such as store lookups)
+* **Health and readiness probes**
+* **Application metadata** (name, version, environment)
+
+### Why This Matters
+
+By exposing metrics in Prometheus format, the app integrates seamlessly with tools like **Prometheus, Grafana, and Alertmanager**.
+
+* **SRE teams** can:
+
+  * Track latency, throughput, and error rates.
+  * Correlate infrastructure signals with business signals.
+  * Set **SLOs and alerts** based on real user-facing behavior.
+
+This is a hands-on example of **observability in action**: metrics connect code, infrastructure, and reliability practices.
 
 ### Step 10: Generate Load and Observe Behavior
 
-Create some traffic to see the observability in action:
+Open a **new terminal window** (keep the app running in the first one). Then generate traffic to simulate real users:
 
 ```bash
 # Generate multiple requests to see metrics change
@@ -261,32 +319,81 @@ for i in {1..20}; do
   curl -s http://localhost:8080/stores > /dev/null
   sleep 0.5
 done
+```
 
+Now check how the metrics were updated:
+
+```bash
 # Check how metrics changed
 curl http://localhost:8080/metrics | grep -E "(http_requests_total|business_operations)"
 ```
 
-Watch the structured logs in your application terminal and notice how request counts increase in the metrics. Some requests might fail intentionally for learning purposes, and observe how the application handles errors gracefully while maintaining observability.
+**What’s happening?**
+
+* The loop sends 20 rounds of requests to `/` and `/stores`.
+* Structured logs will show entries for each request.
+* When you query `/metrics`, counters increase and some simulated failures appear.
+
+Example output:
+
+```text
+http_requests_total{endpoint="home",status_code="200"} 36.0
+http_requests_total{endpoint="get_stores",status_code="200"} 29.0
+http_requests_total{endpoint="get_stores",status_code="503"} 5.0
+business_operations_total{operation_type="store_fetch",status="success"} 29.0
+business_operations_total{operation_type="store_fetch",status="error"} 5.0
+```
+
+This demonstrates how observability captures **success, error, and total operations**, which is exactly how SRE teams monitor reliability in production.
 
 ### Step 11: Understand Health Check Patterns
+
+Open a **new terminal** and run the health and readiness checks multiple times.
 
 ```bash
 # Test health checks multiple times
 for i in {1..5}; do
   echo "Health check $i:"
-  curl -s http://localhost:8080/health | head -1
-  echo ""
-done
-
-# Test readiness checks multiple times  
-for i in {1..10}; do
-  echo "Readiness check $i:"
-  curl -s -w "Status: %{http_code}\n" http://localhost:8080/ready | head -1
+  curl -s http://localhost:8080/health
   echo ""
 done
 ```
 
-Health checks (liveness probes) tell Kubernetes if the application is alive and should be restarted if failing. Readiness checks (readiness probes) tell Kubernetes if the application is ready to receive traffic and should be removed from load balancing if not ready. Notice how readiness occasionally fails, which simulates real dependencies being unavailable.
+Expected output:
+
+```json
+{
+  "checks": { "application": "ok", "disk": "ok", "memory": "ok" },
+  "status": "healthy",
+  "version": "1.0.0"
+}
+```
+
+Health checks (liveness probes) always return **healthy**. Kubernetes uses this to decide if a container is alive or should be restarted.
+
+Now run the readiness checks:
+
+```bash
+# Test readiness checks multiple times  
+for i in {1..10}; do
+  echo "Readiness check $i:"
+  curl -s http://localhost:8080/ready
+  curl -s -o /dev/null -w "Status: %{http_code}\n" http://localhost:8080/ready
+  echo ""
+done
+```
+
+Expected output:
+
+```json
+{
+  "checks": { "cache": "ok", "database": "ok", "external_api": "ok" },
+  "status": "ready"
+}
+Status: 200
+```
+
+Readiness checks always confirm whether the app is prepared to serve traffic. Kubernetes uses these signals to manage load balancing and routing effectively.
 
 ---
 
@@ -294,16 +401,14 @@ Health checks (liveness probes) tell Kubernetes if the application is alive and 
 
 By completing this exercise, you should be able to demonstrate:
 
-The application starts without errors and shows structured log output. The home endpoint returns JSON with application information while the stores endpoint returns store data but may occasionally return 503 errors as designed. The health endpoint always returns 200 status with health information, while the ready endpoint returns 200 status approximately 95% of the time. The metrics endpoint returns Prometheus-formatted metrics data, browser access works through GitHub Codespaces port forwarding, and load testing generates visible changes in metrics output.
+The application starts without errors and shows structured log output. The home endpoint returns JSON with application information while the stores endpoint returns store data. The health endpoint always returns 200 status with health information, while the ready endpoint also returns 200 status, indicating readiness through the JSON body. The metrics endpoint returns Prometheus-formatted metrics data, browser access works through GitHub Codespaces port forwarding, and load testing generates visible changes in metrics output.
 
 ### Verification Questions
 
-Test your understanding by answering these questions:
-
-1. **What happens** if you change the LOG_LEVEL environment variable to DEBUG?
-2. **Why does** the readiness endpoint sometimes return 503?
-3. **What metrics** would help you detect if the application is getting overloaded?
-4. **How would** you modify the application to run on port 8081 instead?
+1. What happens if you change the `LOG_LEVEL` environment variable to DEBUG?
+2. What specific role does the readiness endpoint play compared to the liveness endpoint in Kubernetes?
+3. What metrics would help you detect if the application is getting overloaded?
+4. How would you modify the application to run on port 8081 instead?
 
 ---
 
@@ -319,6 +424,8 @@ Test your understanding by answering these questions:
 
 **Application logs not showing**: The application might be running in the background. Use `Ctrl+C` to stop it, then restart with `python -m app.main`.
 
+**Slow performance in Codespaces**: If pip installs are slow or Codespaces feels unresponsive, stop other apps on your machine or restart the Codespace for a clean environment.
+
 ---
 
 ## Next Steps
@@ -329,4 +436,4 @@ You have successfully set up a complete cloud development environment, explored 
 
 **Key Concepts to Remember**: Observability must be built into applications from the beginning, cloud development environments provide consistency and eliminate local issues, health checks are essential for container orchestration platforms, and structured logging and metrics enable proactive monitoring and faster troubleshooting.
 
-**Before Moving On**: Make sure you can explain why each component (metrics, logging, health checks) is important for SRE work. In the next exercise, you'll package this observable application into containers for deployment.
+**Before Moving On**: Make sure you can explain why each component (metrics, logging, health checks) is important for SRE.
