@@ -198,6 +198,17 @@ Build the container image locally:
 docker build -t sre-demo-app:local .
 ```
 
+Expected output:
+```
+[+] Building 45.2s (17/17) FINISHED
+ => [internal] load build definition from Dockerfile
+ => [internal] load .dockerignore
+ => [builder  1/4] FROM docker.io/library/python:3.11-slim
+ => [builder  4/4] RUN pip install --user --no-warn-script-location -r requirements.txt
+ => [stage-1  8/8] CMD ["python", "-m", "app.main"]
+ => => naming to docker.io/library/sre-demo-app:local
+```
+
 This command creates a container image using the multi-stage Dockerfile, demonstrating the complete build process that will later be automated through GitHub Actions.
 
 ### Step 3: Test the Container Locally
@@ -207,6 +218,11 @@ Run the containerized application to verify that all functionality works correct
 ```bash
 # Run the container locally
 docker run -d -p 8080:8080 --name sre-app-test sre-demo-app:local
+```
+
+Expected output:
+```
+a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890
 ```
 
 The container runs in detached mode with port forwarding configured to allow testing of the containerized application endpoints.
@@ -220,9 +236,43 @@ Test all application endpoints to ensure containerization preserves SRE instrume
 curl http://localhost:8080/
 ```
 
+Expected output:
+```json
+{
+  "environment": "production",
+  "message": "Welcome to sre-demo-app!",
+  "status": "healthy",
+  "timestamp": 1693834567.123,
+  "version": "1.0.0"
+}
+```
+
 ```bash
 # Test the stores endpoint
 curl http://localhost:8080/stores
+```
+
+Expected output:
+```json
+{
+  "processing_time": 0.342,
+  "stores": [
+    {
+      "id": 1,
+      "items": [
+        {
+          "id": 1,
+          "name": "Kubernetes Cluster",
+          "price": 299.99,
+          "stock": 5
+        }
+      ],
+      "location": "us-central1",
+      "name": "Cloud SRE Store"
+    }
+  ],
+  "total_stores": 2
+}
 ```
 
 ```bash
@@ -230,9 +280,36 @@ curl http://localhost:8080/stores
 curl http://localhost:8080/health
 ```
 
+Expected output:
+```json
+{
+  "checks": {
+    "application": "ok",
+    "disk": "ok",
+    "memory": "ok"
+  },
+  "status": "healthy",
+  "timestamp": 1693834567.456,
+  "version": "1.0.0"
+}
+```
+
 ```bash
 # Test Prometheus metrics endpoint
 curl http://localhost:8080/metrics | head -20
+```
+
+Expected output:
+```
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 42.0
+# HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{endpoint="home",method="GET",status_code="200"} 1.0
+# HELP application_info Application information
+# TYPE application_info gauge
+application_info{app_name="sre-demo-app",environment="production",version="1.0.0"} 1.0
 ```
 
 The containerized application should respond identically to the non-containerized version from Exercise 1, demonstrating that containerization preserves all SRE instrumentation and business functionality.
@@ -253,14 +330,35 @@ Inside the container, verify application processes and user configuration:
 ps aux
 ```
 
+Expected output:
+```
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+appuser        1  0.1  0.8 123456  8192 ?        Ss   14:30   0:01 python -m app.main
+appuser       23  0.0  0.1  12345  1024 pts/0    Ss   14:35   0:00 /bin/bash
+```
+
 ```bash
 # Verify current user (should be non-root)
 whoami
 ```
 
+Expected output:
+```
+appuser
+```
+
 ```bash
 # Verify application files and permissions
 ls -la /app
+```
+
+Expected output:
+```
+total 12
+drwxr-xr-x 3 appuser appuser  96 Sep  1 14:30 .
+drwxr-xr-x 1 root    root     17 Sep  1 14:30 ..
+drwxr-xr-x 2 appuser appuser  96 Sep  1 14:30 app
+-rw-r--r-- 1 appuser appuser  89 Sep  1 14:30 requirements.txt
 ```
 
 ```bash
@@ -289,6 +387,11 @@ docker rm sre-app-test
 docker ps -a | grep sre-app-test
 ```
 
+Expected output (should be empty):
+```
+(no output - container successfully removed)
+```
+
 Local testing validates your Dockerfile configuration and ensures that the automated build process will work correctly when implemented through GitHub Actions.
 
 ---
@@ -312,6 +415,11 @@ export PROJECT_ID="your-project-id-here"
 gcloud config set project $PROJECT_ID
 ```
 
+Expected output:
+```
+Updated property [core/project].
+```
+
 Enable the required APIs for container registry and build services:
 
 ```bash
@@ -319,9 +427,19 @@ Enable the required APIs for container registry and build services:
 gcloud services enable containerregistry.googleapis.com
 ```
 
+Expected output:
+```
+Operation "operations/acat.p2-123456789012-abcd-1234" finished successfully.
+```
+
 ```bash
 # Enable Cloud Build API
 gcloud services enable cloudbuild.googleapis.com
+```
+
+Expected output:
+```
+Operation "operations/acat.p2-123456789012-efgh-5678" finished successfully.
 ```
 
 These APIs provide the infrastructure services required for storing and managing container images in Google Cloud Platform.
@@ -335,6 +453,11 @@ Create a dedicated service account with minimal permissions required for contain
 gcloud iam service-accounts create github-actions-sre \
   --display-name="GitHub Actions for SRE Course" \
   --description="Service account for automated container builds"
+```
+
+Expected output:
+```
+Created service account [github-actions-sre].
 ```
 
 ```bash
@@ -359,6 +482,20 @@ gcloud iam service-accounts keys create ~/github-actions-sre-key.json \
 ```bash
 # Display the key content for copying
 cat ~/github-actions-sre-key.json
+```
+
+Expected output:
+```json
+{
+  "type": "service_account",
+  "project_id": "your-project-id",
+  "private_key_id": "1234567890abcdef",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n",
+  "client_email": "github-actions-sre@your-project-id.iam.gserviceaccount.com",
+  "client_id": "123456789012345678901",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token"
+}
 ```
 
 Copy the entire JSON output from this command for use in configuring GitHub repository secrets. This key provides secure authentication for automated builds without exposing your personal credentials.
@@ -448,6 +585,12 @@ git checkout -b exercise2-pipeline-test
 git branch
 ```
 
+Expected output:
+```
+  main
+* exercise2-pipeline-test
+```
+
 This approach follows Git best practices by isolating pipeline testing from the main development branch and avoiding potential conflicts with other exercises.
 
 ### Step 13: Trigger the Automated Build Pipeline
@@ -472,6 +615,22 @@ git commit -m "Test Exercise 2 container build pipeline"
 ```bash
 # Push the feature branch to trigger the workflow
 git push origin exercise2-pipeline-test
+```
+
+Expected output:
+```
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 2 threads.
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 345 bytes | 345.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
+remote: 
+remote: Create a pull request for 'exercise2-pipeline-test' on GitHub by visiting:
+remote:   https://github.com/your-username/kubernetes-sre-cloud-native/pull/new/exercise2-pipeline-test
+remote: 
+To github.com:your-username/kubernetes-sre-cloud-native.git
+ * [new branch]      exercise2-pipeline-test -> exercise2-pipeline-test
 ```
 
 The GitHub Actions workflow will automatically trigger when the feature branch is pushed, executing all testing, building, and registry upload steps.
@@ -500,14 +659,41 @@ List images in your project's container registry:
 gcloud container images list --repository=gcr.io/$PROJECT_ID
 ```
 
+Expected output:
+```
+NAME
+gcr.io/your-project-id/sre-demo-app
+```
+
 ```bash
 # List specific tags for your application image
 gcloud container images list-tags gcr.io/$PROJECT_ID/sre-demo-app
 ```
 
+Expected output:
+```
+DIGEST        TAGS                              TIMESTAMP
+sha256:1a2b3c  exercise2-pipeline-test-a1b2c3d  2024-09-01T14:30:45
+sha256:1a2b3c  latest                           2024-09-01T14:30:45
+```
+
 ```bash
 # Get detailed information about the latest image
 gcloud container images describe gcr.io/$PROJECT_ID/sre-demo-app:latest
+```
+
+Expected output:
+```
+image_summary:
+  digest: sha256:1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890
+  fully_qualified_digest: gcr.io/your-project-id/sre-demo-app@sha256:1a2b3c...
+  registry: gcr.io
+  repository: your-project-id/sre-demo-app
+package_vulnerability_summary:
+  vulnerabilities_by_severity:
+    MEDIUM: 2
+    LOW: 5
+provenance_summary: {}
 ```
 
 The container registry should show your newly built image with multiple tags including the Git commit hash, branch name, and latest tag for development convenience.
