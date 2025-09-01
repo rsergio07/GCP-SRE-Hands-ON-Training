@@ -5,13 +5,13 @@
 - [Learning Objectives](#learning-objectives)
 - [Prerequisites](#prerequisites)
 - [Theory Foundation](#theory-foundation)
-- [Understanding Containerization for SRE](#understanding-containerization-for-sre)
-- [Setting Up Exercise 2 Environment](#setting-up-exercise-2-environment)
+- [Understanding the Application Structure](#understanding-the-application-structure)
 - [Building Your First Container Image](#building-your-first-container-image)
 - [Implementing Cloud-Based CI/CD](#implementing-cloud-based-cicd)
 - [Container Registry Management](#container-registry-management)
 - [Testing the Complete Pipeline](#testing-the-complete-pipeline)
 - [Final Objective](#final-objective)
+- [Verification Questions](#verification-questions)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
 
@@ -19,7 +19,7 @@
 
 ## Introduction
 
-In this exercise, you will learn to containerize your SRE application and implement automated builds using GitHub Actions. You'll work in a dedicated Exercise 2 directory with enhanced application files designed for containerization, then create a complete cloud-based CI/CD pipeline that builds, tests, and stores container images.
+In this exercise, you will learn to containerize your SRE application and implement automated builds using GitHub Actions. You'll work with a pre-configured Exercise 2 directory that contains enhanced application files designed for containerization, then create a complete cloud-based CI/CD pipeline that builds, tests, and stores container images.
 
 This approach demonstrates modern software delivery practices where code commits automatically trigger secure, reproducible builds in cloud environments, preparing your application for deployment to Kubernetes clusters.
 
@@ -46,7 +46,13 @@ Before starting this exercise, ensure you have completed:
 - GitHub repository forked with Codespaces access
 - Understanding of your Flask application's structure and behavior
 
-Note: This exercise builds on concepts from Exercise 1 but uses a separate directory structure.
+Navigate to the Exercise 2 directory:
+
+```bash
+cd exercises/exercise2
+```
+
+Note: This exercise uses a pre-configured directory structure with all necessary files included.
 
 ---
 
@@ -82,332 +88,525 @@ Note: This exercise builds on concepts from Exercise 1 but uses a separate direc
 
 ---
 
-## Understanding Containerization for SRE
+## Understanding the Application Structure
 
-Your SRE application from Exercise 1 demonstrated observability patterns, but production deployments require consistent, reproducible environments across different infrastructure. Containers solve this problem by packaging your application with all its dependencies into a portable, immutable artifact.
+Your Exercise 2 directory contains a complete containerization setup that enhances the SRE application from Exercise 1 with production-ready containerization capabilities and automated CI/CD workflows.
 
-### Why Containers Matter for SRE Work
+### Directory Structure Overview
 
-**Environment Consistency** ensures that your application behaves identically whether running in development, staging, or production environments. This consistency eliminates environment-specific bugs that are difficult to reproduce and troubleshoot.
-
-**Immutable Infrastructure** principles require that application deployments use identical, versioned artifacts rather than manual configuration changes. Containers provide this immutability by packaging the complete runtime environment.
-
-**Observability Integration** becomes more important in containerized environments where traditional server monitoring approaches don't apply. Your application's built-in metrics and logging become the primary sources of operational insight.
-
-### Container Architecture for Your Application
-
-Your Flask application will be containerized using a multi-stage Docker build that separates build-time dependencies from runtime requirements. This approach creates smaller, more secure images while maintaining all necessary functionality.
-
-The containerized version will preserve all SRE instrumentation from Exercise 1, including Prometheus metrics endpoints, structured logging output, and health check endpoints that Kubernetes requires for proper orchestration.
-
----
-
-## Setting Up Exercise 2 Environment
-
-### Step 1: Create Exercise 2 Directory Structure
-
-In your Codespace, create the Exercise 2 directory and copy the necessary files from Exercise 1:
-
-```bash
-# Navigate to the exercises directory
-cd exercises
-
-# Create Exercise 2 directory structure
-mkdir -p exercise2/app
-mkdir -p exercise2/.github/workflows
-
-# Copy application files from Exercise 1
-cp exercise1/app/* exercise2/app/
-cp exercise1/requirements.txt exercise2/
-
-# Navigate to Exercise 2 directory
-cd exercise2
-```
-
-This creates a clean separation between exercises while preserving the working application code. Exercise 2 will enhance the application with containerization capabilities without modifying Exercise 1.
-
-### Step 2: Examine the Exercise 2 Structure
-
-Look at the files that have been provided for Exercise 2:
+Examine the pre-configured directory structure to understand the containerization components:
 
 ```bash
 # Check the current directory structure
 ls -la
-
-# Examine the application files
-ls -la app/
-
-# Verify the requirements file
-cat requirements.txt
 ```
-
-The Exercise 2 directory contains all necessary files for containerization, including the Flask application from Exercise 1, a production-ready Dockerfile, and GitHub Actions workflow configurations.
-
-### Step 3: Review Application Enhancements
-
-Examine the enhanced application configuration for container deployment:
 
 ```bash
-# Check the main application file
-head -20 app/main.py
-
-# Review configuration management
-head -15 app/config.py
-
-# Understand the package structure
-cat app/__init__.py
+# Display the complete directory tree
+tree -a
 ```
 
-The application maintains all SRE instrumentation from Exercise 1 while adding container-specific configurations such as proper port binding, signal handling, and health check endpoints optimized for container orchestration platforms.
+The Exercise 2 directory contains the following key components: application files enhanced for containerization, multi-stage Dockerfile for optimized production images, GitHub Actions workflow for automated CI/CD, and supporting configuration files for container security and optimization.
 
----
+### Application Files Examination
 
-## Building Your First Container Image
+Review the enhanced application files that maintain all SRE instrumentation while adding container-specific configurations:
 
-### Step 4: Understand the Dockerfile
+```bash
+# Examine the application directory structure
+ls -la app/
+```
 
-Examine the provided Dockerfile to understand the container build process:
+```bash
+# Review the main application file
+head -20 app/main.py
+```
+
+```bash
+# Check the configuration management
+cat app/config.py
+```
+
+The application maintains all observability features from Exercise 1, including Prometheus metrics, structured logging, and health check endpoints, while adding container-optimized configuration for port binding, signal handling, and environment-based settings.
+
+### Container Configuration Analysis
+
+Examine the containerization configuration files that implement production-ready container security and optimization:
 
 ```bash
 # Review the Dockerfile structure
 cat Dockerfile
 ```
 
-The Dockerfile implements a multi-stage build process that separates build-time dependencies from the runtime environment. This approach reduces the final image size while maintaining security by using a non-root user and minimal base image.
-
-The build process includes dependency installation, application copying, proper user configuration for security, and health check definitions that integrate with container orchestration platforms.
-
-### Step 5: Build and Test Locally
-
-Test your container build process in your Codespace to verify that the Dockerfile works correctly:
-
 ```bash
-# Build the container image
-docker build -t sre-demo-app:local .
-
-# Run the container locally
-docker run -p 8080:8080 --name sre-app-test sre-demo-app:local
+# Check the Docker ignore file
+cat .dockerignore
 ```
 
-The local build process helps validate your Dockerfile configuration before implementing automated builds. This testing approach follows SRE practices of validating changes in controlled environments before production deployment.
+```bash
+# Verify application requirements
+cat requirements.txt
+```
 
-Open a new terminal to test the containerized application endpoints and verify that all functionality works correctly within the container environment.
+The Dockerfile implements multi-stage builds to optimize image size and security, while the .dockerignore file excludes unnecessary files to minimize build context and potential security risks.
 
-### Step 6: Test Containerized Application
+### GitHub Actions Workflow Overview
+
+Review the automated CI/CD pipeline configuration that handles testing, building, security scanning, and registry management:
 
 ```bash
-# Test the containerized application endpoints
-curl http://localhost:8080/
+# Examine the GitHub Actions workflow
+cat .github/workflows/build-and-push.yml
+```
 
+The workflow implements comprehensive automation including application testing with flake8 and bandit, container image building with Docker Buildx, security scanning with Trivy, and automated pushing to Google Container Registry with proper authentication and tagging strategies.
+
+---
+
+## Building Your First Container Image
+
+### Step 1: Understand the Multi-Stage Dockerfile
+
+The provided Dockerfile implements production-grade containerization using a two-stage build process that separates build dependencies from runtime environment.
+
+Examine the builder stage configuration:
+
+```bash
+# Review the builder stage section
+head -15 Dockerfile
+```
+
+The builder stage installs system dependencies required for compiling Python packages and creates an isolated environment for dependency installation without including build tools in the final image.
+
+Review the production stage configuration:
+
+```bash
+# Review the production stage section
+tail -20 Dockerfile
+```
+
+The production stage implements security best practices including non-root user execution, minimal base image usage, and proper health check configurations for Kubernetes integration.
+
+### Step 2: Build the Container Image Locally
+
+Test your container build process in your Codespace to verify that the Dockerfile works correctly before implementing automated builds.
+
+Build the container image locally:
+
+```bash
+# Build the container image with local tag
+docker build -t sre-demo-app:local .
+```
+
+This command creates a container image using the multi-stage Dockerfile, demonstrating the complete build process that will later be automated through GitHub Actions.
+
+### Step 3: Test the Container Locally
+
+Run the containerized application to verify that all functionality works correctly within the container environment:
+
+```bash
+# Run the container locally
+docker run -d -p 8080:8080 --name sre-app-test sre-demo-app:local
+```
+
+The container runs in detached mode with port forwarding configured to allow testing of the containerized application endpoints.
+
+### Step 4: Verify Containerized Application Functionality
+
+Test all application endpoints to ensure containerization preserves SRE instrumentation and application functionality:
+
+```bash
+# Test the main endpoint
+curl http://localhost:8080/
+```
+
+```bash
 # Test the stores endpoint
 curl http://localhost:8080/stores
-
-# Test health checks
-curl http://localhost:8080/health
-
-# Test metrics endpoint
-curl http://localhost:8080/metrics
 ```
 
-The containerized application should respond identically to the non-containerized version from Exercise 1, demonstrating that containerization preserves all application functionality and SRE instrumentation.
+```bash
+# Test health checks
+curl http://localhost:8080/health
+```
 
-### Step 7: Inspect Container Behavior
+```bash
+# Test Prometheus metrics endpoint
+curl http://localhost:8080/metrics | head -20
+```
+
+The containerized application should respond identically to the non-containerized version from Exercise 1, demonstrating that containerization preserves all SRE instrumentation and business functionality.
+
+### Step 5: Inspect Container Runtime Behavior
+
+Examine how your application operates within the container environment to understand container security and operational characteristics:
 
 ```bash
 # Inspect the running container
 docker exec -it sre-app-test /bin/bash
+```
 
+Inside the container, verify application processes and user configuration:
+
+```bash
 # Check application processes and user
 ps aux
-whoami
+```
 
+```bash
+# Verify current user (should be non-root)
+whoami
+```
+
+```bash
 # Verify application files and permissions
 ls -la /app
+```
 
+```bash
 # Exit container shell
 exit
+```
 
-# Stop and remove test container
+This inspection process helps you understand container security implementation and application runtime behavior within the isolated container environment.
+
+### Step 6: Clean Up Local Test Container
+
+Remove the test container to prepare for automated build testing:
+
+```bash
+# Stop the test container
 docker stop sre-app-test
+```
+
+```bash
+# Remove the test container
 docker rm sre-app-test
 ```
 
-This inspection process helps you understand how your application operates within the container environment, which is essential for troubleshooting issues in production Kubernetes deployments.
+```bash
+# Verify container removal
+docker ps -a | grep sre-app-test
+```
 
-### Understanding Container Responses
-
-**Reference Documentation**:
-- [Docker CLI Reference](https://docs.docker.com/engine/reference/commandline/cli/) - Understanding docker commands and output
-- [Container Health Checks](https://docs.docker.com/engine/reference/builder/#healthcheck) - Implementing proper health monitoring
-- [Multi-stage Builds](https://docs.docker.com/build/building/multi-stage/) - Optimizing container images
+Local testing validates your Dockerfile configuration and ensures that the automated build process will work correctly when implemented through GitHub Actions.
 
 ---
 
 ## Implementing Cloud-Based CI/CD
 
-### Step 8: Configure Google Cloud Integration
+### Step 7: Configure Google Cloud Authentication
 
-Your GitHub Actions workflow requires authentication to push images to Google Container Registry. Set up the necessary service accounts and permissions in Google Cloud Shell:
+Your GitHub Actions workflow requires authentication to push images to Google Container Registry. Set up the necessary service accounts and permissions using Google Cloud Shell.
+
+First, authenticate and configure your Google Cloud project:
 
 ```bash
 # Authenticate to Google Cloud (if not already authenticated)
 gcloud auth login
+```
 
+```bash
 # Set your project ID (replace with your actual project ID)
 export PROJECT_ID="your-project-id-here"
 gcloud config set project $PROJECT_ID
+```
 
-# Enable required APIs
+Enable the required APIs for container registry and build services:
+
+```bash
+# Enable Container Registry API
 gcloud services enable containerregistry.googleapis.com
-gcloud services enable cloudbuild.googleapis.com
+```
 
+```bash
+# Enable Cloud Build API
+gcloud services enable cloudbuild.googleapis.com
+```
+
+These APIs provide the infrastructure services required for storing and managing container images in Google Cloud Platform.
+
+### Step 8: Create Service Account for GitHub Actions
+
+Create a dedicated service account with minimal permissions required for container registry operations:
+
+```bash
 # Create service account for GitHub Actions
 gcloud iam service-accounts create github-actions-sre \
   --display-name="GitHub Actions for SRE Course" \
   --description="Service account for automated container builds"
+```
 
-# Grant necessary permissions for container registry
+```bash
+# Grant storage admin permissions for container registry
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:github-actions-sre@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/storage.admin"
+```
 
+The service account receives only the minimum permissions necessary to push container images to Google Container Registry, following the principle of least privilege for security.
+
+### Step 9: Generate and Download Service Account Key
+
+Create a service account key that GitHub Actions will use for authentication:
+
+```bash
 # Create and download service account key
 gcloud iam service-accounts keys create ~/github-actions-sre-key.json \
   --iam-account=github-actions-sre@$PROJECT_ID.iam.gserviceaccount.com
+```
 
+```bash
 # Display the key content for copying
 cat ~/github-actions-sre-key.json
 ```
 
-Copy the entire JSON output for use in the next step. This service account provides GitHub Actions with the minimum permissions needed to push container images to your Google Container Registry.
+Copy the entire JSON output from this command for use in configuring GitHub repository secrets. This key provides secure authentication for automated builds without exposing your personal credentials.
 
-### Step 9: Configure Repository Secrets
+### Step 10: Configure Repository Secrets
 
-Add the service account credentials to your GitHub repository as encrypted secrets:
+Add the service account credentials to your GitHub repository as encrypted secrets that GitHub Actions can access during workflow execution.
 
-1. Navigate to your forked repository on GitHub
-2. Go to Settings → Secrets and variables → Actions
-3. Add these repository secrets:
+Navigate to your forked repository on GitHub and follow these steps:
+
+1. Go to Settings → Secrets and variables → Actions
+2. Add these repository secrets:
 
 | Secret Name | Value |
 |-------------|-------|
 | `GCP_PROJECT_ID` | Your Google Cloud project ID |
-| `GCP_SA_KEY` | Contents of the `github-actions-sre-key.json` file |
+| `GCP_SA_KEY` | Complete contents of the `github-actions-sre-key.json` file |
 
-These secrets allow GitHub Actions to authenticate with Google Cloud services while keeping credentials secure and separated from your source code.
+These encrypted secrets allow GitHub Actions to authenticate with Google Cloud services while keeping credentials secure and separated from your source code repository.
 
-### Step 10: Examine the GitHub Actions Workflow
+### Step 11: Understand the GitHub Actions Workflow
 
-Review the provided GitHub Actions workflow configuration:
+The provided GitHub Actions workflow implements a comprehensive CI/CD pipeline with multiple validation and security stages.
+
+Examine the workflow structure and job dependencies:
 
 ```bash
-# Examine the workflow file
-cat .github/workflows/build-and-push.yml
+# Review the workflow file structure
+head -30 .github/workflows/build-and-push.yml
 ```
 
-The workflow includes multiple stages for testing the application code, building the container image, scanning for security vulnerabilities, and pushing verified images to Google Container Registry. Each step includes proper error handling and logging for troubleshooting build failures.
+The workflow includes two main jobs: `test-application` for code quality and security validation, and `build-and-push` for container creation and registry upload. The jobs are configured with proper dependency relationships to ensure testing completes before building.
+
+Review the testing phase configuration:
+
+```bash
+# Examine the application testing job
+sed -n '12,40p' .github/workflows/build-and-push.yml
+```
+
+The testing phase performs code linting with flake8, security analysis with bandit, and application startup verification to catch issues before container creation.
+
+Review the build and push phase configuration:
+
+```bash
+# Examine the build and push job
+sed -n '42,80p' .github/workflows/build-and-push.yml
+```
+
+The build phase includes Google Cloud authentication, Docker image creation with caching optimizations, security vulnerability scanning with Trivy, and automated registry upload with proper tagging strategies.
 
 ---
 
 ## Container Registry Management
 
-### Step 11: Understand Image Naming and Tagging
+### Understanding Image Naming and Tagging Strategy
 
-Container images in Google Container Registry follow specific naming conventions that include the registry hostname, project ID, image name, and tag. Understanding this structure is essential for proper image management and deployment.
+Container images in Google Container Registry follow specific naming conventions that support both development workflows and production traceability.
 
-Your images will be tagged with both the Git commit SHA for precise versioning and conventional tags like `latest` for development purposes. This dual tagging approach supports both reproducible deployments and convenient development workflows.
+The workflow automatically generates multiple tags for each successful build: Git commit SHA for precise version tracking, branch name for development identification, and `latest` tag for convenient development access.
 
-The workflow automatically generates appropriate tags based on the branch name and commit hash, ensuring that every build produces uniquely identifiable and traceable container images.
+This multi-tag approach ensures that every build produces uniquely identifiable container images while supporting flexible deployment strategies for different environments.
+
+### Registry Security and Access Control
+
+Google Container Registry integrates with Google Cloud IAM to provide fine-grained access control for container images. The service account created in previous steps has minimal permissions required only for image storage operations.
+
+Container images stored in the registry are automatically scanned for security vulnerabilities, providing additional protection against known security issues in base images and dependencies.
 
 ---
 
 ## Testing the Complete Pipeline
 
-### Step 12: Trigger Your First Automated Build
+### Step 12: Create Feature Branch for Pipeline Testing
 
-Make a small change to trigger the automated build pipeline:
+Use a feature branch approach to test the automated build pipeline without affecting the main repository state or other exercises.
+
+Create a dedicated feature branch for pipeline testing:
 
 ```bash
-# Make a small change to trigger the pipeline
-echo "Container build ready for deployment" >> README.md
-
-# Commit and push the change
-git add .
-git commit -m "Add container build configuration for Exercise 2"
-git push origin main
+# Create and switch to a feature branch for testing
+git checkout -b exercise2-pipeline-test
 ```
 
-Monitor the GitHub Actions workflow execution by navigating to the Actions tab in your GitHub repository. The workflow should automatically trigger and execute all build steps including testing, image creation, security scanning, and registry upload.
+```bash
+# Verify you're on the feature branch
+git branch
+```
 
-### Step 13: Monitor the Build Process
+This approach follows Git best practices by isolating pipeline testing from the main development branch and avoiding potential conflicts with other exercises.
 
-Watch the GitHub Actions workflow progress:
+### Step 13: Trigger the Automated Build Pipeline
 
-1. Go to your GitHub repository
-2. Click the "Actions" tab
-3. Select the latest workflow run
-4. Expand each step to see detailed logs
-
-The build process includes application testing, Docker image creation, security vulnerability scanning, and final upload to Google Container Registry. Each step provides detailed logging for troubleshooting any issues.
-
-### Step 14: Verify Container Registry Upload
-
-Once the GitHub Actions workflow completes successfully, verify that your container image was uploaded to Google Container Registry:
+Make a small change to trigger the GitHub Actions workflow without modifying critical application files:
 
 ```bash
-# List images in your project's container registry
+# Create a pipeline test file with timestamp
+echo "Pipeline test for Exercise 2 - $(date)" > .pipeline-test
+```
+
+```bash
+# Add the test file to git staging
+git add .pipeline-test
+```
+
+```bash
+# Commit the change with descriptive message
+git commit -m "Test Exercise 2 container build pipeline"
+```
+
+```bash
+# Push the feature branch to trigger the workflow
+git push origin exercise2-pipeline-test
+```
+
+The GitHub Actions workflow will automatically trigger when the feature branch is pushed, executing all testing, building, and registry upload steps.
+
+### Step 14: Monitor the Build Process
+
+Watch the GitHub Actions workflow progress through the web interface to understand the complete automation process.
+
+Navigate to your GitHub repository and monitor the workflow execution:
+
+1. Click the "Actions" tab in your GitHub repository
+2. Select the latest workflow run triggered by your push
+3. Expand each job and step to see detailed logs
+4. Monitor the progress through testing, building, and registry upload phases
+
+The build process includes comprehensive logging for troubleshooting any issues that may occur during automated execution.
+
+### Step 15: Verify Container Registry Upload
+
+Once the GitHub Actions workflow completes successfully, verify that your container image was uploaded to Google Container Registry with proper tags.
+
+List images in your project's container registry:
+
+```bash
+# List all images in your project's registry
 gcloud container images list --repository=gcr.io/$PROJECT_ID
+```
 
-# List tags for your specific image
+```bash
+# List specific tags for your application image
 gcloud container images list-tags gcr.io/$PROJECT_ID/sre-demo-app
+```
 
+```bash
 # Get detailed information about the latest image
 gcloud container images describe gcr.io/$PROJECT_ID/sre-demo-app:latest
 ```
 
-The container registry listing should show your newly built image with appropriate tags based on your Git commit hash and any additional tags specified in the workflow configuration.
+The container registry should show your newly built image with multiple tags including the Git commit hash, branch name, and latest tag for development convenience.
+
+### Step 16: Clean Up Feature Branch
+
+After successful pipeline testing, clean up the feature branch to maintain repository organization:
+
+```bash
+# Switch back to main branch
+git checkout main
+```
+
+```bash
+# Delete the local feature branch
+git branch -d exercise2-pipeline-test
+```
+
+```bash
+# Delete the remote feature branch
+git push origin --delete exercise2-pipeline-test
+```
+
+This cleanup maintains a clean repository structure while preserving the container image artifacts created during the pipeline test.
 
 ---
 
 ## Final Objective
 
-By completing this exercise, you should be able to demonstrate:
+By completing this exercise, you should be able to demonstrate comprehensive understanding of containerization and automated CI/CD implementation for SRE applications.
 
-Your application successfully builds into a secure, optimized container image using multi-stage Docker builds. The GitHub Actions workflow automatically triggers on code changes, performs comprehensive testing and security scanning, and uploads verified images to Google Container Registry. The containerized application maintains identical functionality to Exercise 1, including all Prometheus metrics, structured logging, and health check endpoints required for Kubernetes deployment.
+Your accomplishments include successfully containerizing the SRE application using production-grade multi-stage Docker builds that optimize image size and implement security best practices. The GitHub Actions workflow automatically triggers on code changes, performs comprehensive testing including code linting and security scanning, and uploads verified container images to Google Container Registry with proper authentication and tagging strategies.
 
-### Verification Questions
+The containerized application maintains identical functionality to Exercise 1, preserving all Prometheus metrics, structured logging, and health check endpoints while adding container-specific optimizations for Kubernetes deployment readiness.
 
-Test your understanding by answering these questions:
+The implemented CI/CD pipeline demonstrates modern DevOps practices including automated quality gates, security validation, and reproducible build processes that eliminate manual deployment errors and provide audit trails for compliance requirements.
 
-1. **What advantages** does the multi-stage Docker build provide compared to a single-stage build for production applications?
-2. **How would** you troubleshoot a GitHub Actions workflow that fails during the container security scan step?
-3. **Why is** the application configured to run as a non-root user inside the container?
-4. **What happens** to the container image tags when you push code to a feature branch versus the main branch?
+---
+
+## Verification Questions
+
+Test your understanding of containerization and CI/CD concepts by answering these questions:
+
+1. **What specific advantages** does the multi-stage Docker build provide compared to a single-stage build for production applications, and how does this impact both security and operational efficiency?
+
+2. **How would you troubleshoot** a GitHub Actions workflow that fails during the Trivy security scan step, and what steps would you take to identify and resolve container vulnerabilities?
+
+3. **Why is the application configured** to run as a non-root user inside the container, and what additional security measures are implemented in the Dockerfile to minimize attack surface?
+
+4. **What happens to container image tags** when you push code to a feature branch versus the main branch, and how does this tagging strategy support different deployment environments?
+
+5. **How does the automated pipeline** ensure that only validated, secure container images reach the production registry, and what would happen if any of the quality gates fail?
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+### Container Build Issues
 
-**Docker build fails with "no space left on device"**: Clean up unused Docker images and containers in your Codespace with `docker system prune -a` to free space, or restart the Codespace if the issue persists.
+**Docker build fails with "no space left on device"**: Clean up unused Docker images and containers with `docker system prune -a`, or restart the Codespace if disk space issues persist in the development environment.
 
-**GitHub Actions authentication errors**: Verify that your `GCP_SA_KEY` secret contains the complete JSON service account key including opening and closing braces, and ensure the service account has the correct IAM permissions for Container Registry access.
+**Multi-stage build fails at dependency installation**: Verify that the `requirements.txt` file contains valid Python package specifications and that network connectivity allows package downloads from PyPI during the build process.
 
-**Container Registry API not enabled**: Enable the Container Registry API in your Google Cloud project using `gcloud services enable containerregistry.googleapis.com` and verify billing is enabled for your project.
+**Container fails to start with permission errors**: Check that the Dockerfile properly configures the non-root user with correct file ownership and that application files have appropriate permissions for the container runtime.
 
-**Application not responding in container**: Verify that your Flask application is configured to bind to `0.0.0.0:8080` instead of `localhost` to accept connections from outside the container environment.
+### GitHub Actions Authentication Issues
 
-**Permission denied pushing to registry**: Check that your service account has the `roles/storage.admin` role and that the Container Registry API is enabled in your Google Cloud project.
+**Authentication errors with Google Cloud**: Verify that the `GCP_SA_KEY` secret contains the complete JSON service account key including opening and closing braces, and ensure the service account has the correct IAM permissions.
+
+**Container Registry API not enabled**: Enable the Container Registry API using `gcloud services enable containerregistry.googleapis.com` and verify that billing is enabled for your Google Cloud project.
+
+**Permission denied pushing to registry**: Confirm that the service account has the `roles/storage.admin` role and that the Container Registry API is properly enabled with billing configured.
+
+### Application Runtime Issues
+
+**Application not responding in container**: Verify that Flask is configured to bind to `0.0.0.0:8080` instead of `localhost` to accept connections from outside the container environment, and check that health check endpoints are properly configured.
+
+**Metrics endpoint returns empty response**: Ensure that Prometheus metrics are properly initialized before the first request and that the metrics endpoint is accessible within the container networking configuration.
+
+**Health checks failing in container**: Verify that health check endpoints respond correctly and that the curl command in the Dockerfile HEALTHCHECK instruction can access the application on the expected port.
+
+### Pipeline Execution Issues
+
+**Workflow not triggering on push**: Check that the workflow file is in the correct `.github/workflows/` directory and that the branch and path filters in the workflow configuration match your repository structure.
+
+**Build process hangs during testing**: Verify that test commands complete within reasonable timeouts and that the application can start successfully in the GitHub Actions environment without interactive prompts.
+
+**Security scan fails with high-severity vulnerabilities**: Update base images and dependencies to resolve security issues, or configure the Trivy scanner to use appropriate severity thresholds for your security requirements.
 
 ---
 
 ## Next Steps
 
-You have successfully containerized your SRE application using production-ready Docker practices, implemented automated CI/CD pipelines using GitHub Actions, configured secure authentication with Google Cloud services, and stored versioned container images in Google Container Registry with proper tagging strategies.
+You have successfully implemented comprehensive containerization and automated CI/CD for your SRE application using production-ready practices that demonstrate modern software delivery excellence.
 
-**Proceed to [Exercise 3](../exercise3/)** where you will deploy your containerized application to Google Kubernetes Engine, configure Kubernetes health checks and resource management, implement horizontal pod autoscaling based on your Prometheus metrics, and establish the foundation for production-ready container orchestration.
+Your achievements include creating optimized, secure container images using multi-stage Docker builds, implementing automated CI/CD pipelines with comprehensive testing and security validation, configuring secure authentication and access control for cloud container registries, and establishing proper image tagging strategies that support both development workflows and production traceability.
 
-**Key Concepts to Remember**: Multi-stage Docker builds optimize image size while maintaining security, automated CI/CD pipelines provide consistency and audit trails for deployments, container registries enable versioned artifact storage for reproducible deployments, and proper tagging strategies support both development workflows and production traceability.
+**Proceed to [Exercise 3](../exercise3/)** where you will deploy your containerized application to Google Kubernetes Engine, implementing Kubernetes health checks and resource management, configuring horizontal pod autoscaling based on Prometheus metrics, and establishing production-ready container orchestration with proper service discovery and load balancing.
 
-**Before Moving On**: Ensure you can explain how the containerization process preserves all SRE instrumentation from Exercise 1 and why automated security scanning is essential for production container deployments. In the next exercise, you'll orchestrate these containers using Kubernetes.
+**Key Concepts to Remember**: Multi-stage Docker builds optimize image size while maintaining security through separation of build and runtime environments. Automated CI/CD pipelines provide consistency, quality gates, and audit trails that eliminate manual deployment errors. Container registries enable versioned artifact storage with proper authentication and access control for production deployments. Security scanning and vulnerability management are essential components of production-ready container workflows.
+
+**Before Moving On**: Ensure you can explain how containerization preserves all SRE instrumentation while adding cloud-native deployment capabilities, why automated security scanning is critical for production container deployments, and how the implemented CI/CD pipeline supports both development agility and operational reliability. In Exercise 3, you'll orchestrate these containers using Kubernetes to complete the cloud-native deployment architecture.
