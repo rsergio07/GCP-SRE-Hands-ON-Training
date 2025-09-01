@@ -253,7 +253,7 @@ curl http://localhost:8080/ready
 * `/stores` → simulates a real business endpoint, returning multiple stores with products, pricing, and stock levels.
 * `/stores/1` → fetches details for a specific store, including items and inventory.
 * `/health` → always returns `healthy`, simulating a **liveness probe** that Kubernetes uses to decide if a container should be restarted.
-* `/ready` → usually returns `ready`, but may occasionally return `503 Service Unavailable`. This simulates a **readiness probe**, teaching how Kubernetes stops routing traffic to pods that aren’t ready.
+* `/ready` → returns ready when the application is prepared to serve traffic, simulating a readiness probe that Kubernetes uses to determine if a pod should receive requests.
 
 **Why this matters:**
 
