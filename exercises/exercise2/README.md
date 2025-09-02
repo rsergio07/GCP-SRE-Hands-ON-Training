@@ -629,7 +629,7 @@ Container images stored in the registry are automatically scanned for security v
 
 ### Step 12: Verify Initial Registry State
 
-Before triggering the automated build pipeline, verify that your container registry is initially empty to establish a baseline for comparison.
+Before triggering the automated build pipeline, check the current state of your container registry.
 
 Check the current state of your container registry:
 
@@ -638,12 +638,14 @@ Check the current state of your container registry:
 gcloud container images list --repository=gcr.io/$PROJECT_ID
 ```
 
-Expected output (initially empty):
-```
-Listed 0 items.
+Expected output (for first-time Exercise 2):
+
+```bash
+ERROR: (gcloud.container.images.list) Bad status during token exchange: 404
+b'{"errors":[{"code":"NAME_UNKNOWN","message":"Repository \"gcr.io\" not found"}]}\n'
 ```
 
-This empty state confirms that your registry is ready for the first automated build. After the GitHub Actions workflow completes, this same command will show your newly built container image.
+**This error is normal and expected** for new projects. Google Container Registry repositories are created automatically when the first image is pushed. This establishes our baseline - after the GitHub Actions workflow completes, this same command will show your newly built container image.
 
 ### Step 13: Create Feature Branch for Pipeline Testing
 
@@ -656,7 +658,8 @@ Create a dedicated feature branch for pipeline testing:
 git checkout -b exercise2-pipeline-test
 ```
 
-Expected output:
+***Expected output***:
+
 ```
 Switched to a new branch 'exercise2-pipeline-test'
 ```
@@ -666,7 +669,8 @@ Switched to a new branch 'exercise2-pipeline-test'
 git branch
 ```
 
-Expected output:
+***Expected output***:
+
 ```
 * exercise2-pipeline-test
   main
@@ -705,7 +709,8 @@ Expected output:
 git push origin exercise2-pipeline-test
 ```
 
-Expected output:
+***Expected output***:
+
 ```
 Enumerating objects: 220, done.
 Counting objects: 100% (220/220), done.
@@ -748,7 +753,8 @@ Check that your registry now contains the built image:
 gcloud container images list --repository=gcr.io/$PROJECT_ID
 ```
 
-Expected output (after successful build):
+***Expected output (after successful build)***:
+
 ```
 NAME
 gcr.io/your-project-id/sre-demo-app
@@ -759,7 +765,8 @@ gcr.io/your-project-id/sre-demo-app
 gcloud container images list-tags gcr.io/$PROJECT_ID/sre-demo-app
 ```
 
-Expected output (after successful build):
+***Expected output (after successful build)***:
+
 ```
 DIGEST        TAGS                              TIMESTAMP
 sha256:1a2b3c  exercise2-pipeline-test-a1b2c3d  2024-09-01T14:30:45
@@ -770,7 +777,8 @@ sha256:1a2b3c  exercise2-pipeline-test-a1b2c3d  2024-09-01T14:30:45
 gcloud container images describe gcr.io/$PROJECT_ID/sre-demo-app:latest
 ```
 
-Expected output (after successful build):
+***Expected output (after successful build)***:
+
 ```
 image_summary:
   digest: sha256:1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890
