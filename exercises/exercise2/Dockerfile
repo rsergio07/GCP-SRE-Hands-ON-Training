@@ -1,5 +1,5 @@
 # Multi-stage build for optimized production container
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 # Set build environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \

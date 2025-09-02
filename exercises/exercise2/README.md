@@ -160,7 +160,7 @@ Review the automated CI/CD pipeline configuration that handles testing, building
 
 ```bash
 # Examine the GitHub Actions workflow
-cat ../../.github/workflows/build-and-push.yml
+cat .github/workflows/build-and-push.yml
 ```
 
 The workflow implements comprehensive automation including application testing with flake8 and bandit, container image building with Docker Buildx, security scanning with Trivy, and automated pushing to Google Container Registry with proper authentication and tagging strategies.
@@ -353,6 +353,8 @@ drwxr-xr-x 1 appuser appuser 4096 Aug 31 23:09 app
 -rw-rw-rw- 1 appuser appuser   89 Aug 31 23:09 requirements.txt
 ```
 
+Note: The `ps aux` command is not available in the minimal container image, which is expected behavior for optimized production containers.
+
 ```bash
 # Exit container shell
 exit
@@ -523,36 +525,50 @@ These encrypted secrets allow GitHub Actions to authenticate with Google Cloud s
 
 ### Step 11: Understand the GitHub Actions Workflow
 
-The GitHub Actions workflow defines a CI/CD pipeline that validates code quality, performs security checks, builds the container image, and pushes it to a registry.
+The provided GitHub Actions workflow implements a comprehensive CI/CD pipeline with multiple validation and security stages.
 
-Workflow files must be located in `.github/workflows/` at the repository root. For this exercise, the relevant workflow is named `build-and-push.yml`.
-
-To examine the workflow structure and job dependencies:
+**Important**: GitHub Actions workflows must be located in `.github/workflows/` at the repository root, not within exercise subdirectories. If the workflow file is currently in `exercises/exercise2/.github/workflows/`, it needs to be moved to the repository root:
 
 ```bash
-# Review the workflow file structure (from exercise directory)
-head -30 ../../.github/workflows/build-and-push.yml
+# Navigate to repository root
+cd ../../
+
+# Create .github/workflows directory if it doesn't exist
+mkdir -p .github/workflows
+
+# Move the workflow file to the correct location
+mv exercises/exercise2/.github/workflows/build-and-push.yml .github/workflows/exercise2-build-and-push.yml
+
+# Navigate back to exercise directory
+cd exercises/exercise2
 ```
 
-The workflow defines two jobs. The first, `test-application`, handles code linting with flake8, security analysis with bandit, and a basic startup check to catch issues before container creation. The second job, `build-and-push`, depends on the first and handles container image creation and registry upload.
+Examine the workflow structure and job dependencies:
 
-To inspect the testing phase configuration:
+```bash
+# Review the workflow file structure (from repository root)
+head -30 ../../.github/workflows/exercise2-build-and-push.yml
+```
+
+The workflow includes two main jobs: `test-application` for code quality and security validation, and `build-and-push` for container creation and registry upload. The jobs are configured with proper dependency relationships to ensure testing completes before building.
+
+Review the testing phase configuration:
 
 ```bash
 # Examine the application testing job
-sed -n '12,40p' ../../.github/workflows/build-and-push.yml
+sed -n '12,40p' .github/workflows/build-and-push.yml
 ```
 
-This phase ensures the application meets baseline quality and security standards before proceeding.
+The testing phase performs code linting with flake8, security analysis with bandit, and application startup verification to catch issues before container creation.
 
-To inspect the build and push phase configuration:
+Review the build and push phase configuration:
 
 ```bash
 # Examine the build and push job
-sed -n '42,80p' ../../.github/workflows/build-and-push.yml
+sed -n '42,80p' .github/workflows/build-and-push.yml
 ```
 
-This phase authenticates with Google Cloud, builds the image using Docker Buildx with caching optimizations, scans it with Trivy for vulnerabilities, and pushes it to Google Container Registry using structured tagging.
+The build phase includes Google Cloud authentication, Docker image creation with caching optimizations, security vulnerability scanning with Trivy, and automated registry upload with proper tagging strategies.
 
 ---
 
@@ -576,7 +592,25 @@ Container images stored in the registry are automatically scanned for security v
 
 ## Testing the Complete Pipeline
 
-### Step 12: Create Feature Branch for Pipeline Testing
+### Step 12: Verify Initial Registry State
+
+Before triggering the automated build pipeline, verify that your container registry is initially empty to establish a baseline for comparison.
+
+Check the current state of your container registry:
+
+```bash
+# List all images in your project's registry
+gcloud container images list --repository=gcr.io/$PROJECT_ID
+```
+
+Expected output (initially empty):
+```
+Listed 0 items.
+```
+
+This empty state confirms that your registry is ready for the first automated build. After the GitHub Actions workflow completes, this same command will show your newly built container image.
+
+### Step 13: Create Feature Branch for Pipeline Testing
 
 Use a feature branch approach to test the automated build pipeline without affecting the main repository state or other exercises.
 
@@ -605,7 +639,7 @@ Expected output:
 
 This approach follows Git best practices by isolating pipeline testing from the main development branch and avoiding potential conflicts with other exercises.
 
-### Step 13: Trigger the Automated Build Pipeline
+### Step 14: Trigger the Automated Build Pipeline
 
 Make a small change to trigger the GitHub Actions workflow without modifying critical application files:
 
@@ -655,7 +689,7 @@ To https://github.com/your-username/kubernetes-sre-cloud-native
 
 The GitHub Actions workflow will automatically trigger when the feature branch is pushed, executing all testing, building, and registry upload steps.
 
-### Step 14: Monitor the Build Process
+### Step 15: Monitor the Build Process
 
 Watch the GitHub Actions workflow progress through the web interface to understand the complete automation process.
 
@@ -668,18 +702,18 @@ Navigate to your GitHub repository and monitor the workflow execution:
 
 The build process includes comprehensive logging for troubleshooting any issues that may occur during automated execution.
 
-### Step 15: Verify Container Registry Upload
+### Step 16: Verify Container Registry Upload
 
 Once the GitHub Actions workflow completes successfully, verify that your container image was uploaded to Google Container Registry with proper tags.
 
-List images in your project's container registry:
+Check that your registry now contains the built image:
 
 ```bash
-# List all images in your project's registry
+# List all images in your project's registry (should now show the built image)
 gcloud container images list --repository=gcr.io/$PROJECT_ID
 ```
 
-Expected output:
+Expected output (after successful build):
 ```
 NAME
 gcr.io/your-project-id/sre-demo-app
@@ -690,11 +724,10 @@ gcr.io/your-project-id/sre-demo-app
 gcloud container images list-tags gcr.io/$PROJECT_ID/sre-demo-app
 ```
 
-Expected output:
+Expected output (after successful build):
 ```
 DIGEST        TAGS                              TIMESTAMP
 sha256:1a2b3c  exercise2-pipeline-test-a1b2c3d  2024-09-01T14:30:45
-sha256:1a2b3c  latest                           2024-09-01T14:30:45
 ```
 
 ```bash
@@ -702,7 +735,7 @@ sha256:1a2b3c  latest                           2024-09-01T14:30:45
 gcloud container images describe gcr.io/$PROJECT_ID/sre-demo-app:latest
 ```
 
-Expected output:
+Expected output (after successful build):
 ```
 image_summary:
   digest: sha256:1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890
@@ -713,12 +746,11 @@ package_vulnerability_summary:
   vulnerabilities_by_severity:
     MEDIUM: 2
     LOW: 5
-provenance_summary: {}
 ```
 
-The container registry should show your newly built image with multiple tags including the Git commit hash, branch name, and latest tag for development convenience.
+The transformation from an empty registry to a populated one with tagged images confirms that your GitHub Actions workflow successfully built, scanned, and uploaded your container image.
 
-### Step 16: Clean Up Feature Branch
+### Step 17: Clean Up Feature Branch
 
 After successful pipeline testing, clean up the feature branch to maintain repository organization:
 
