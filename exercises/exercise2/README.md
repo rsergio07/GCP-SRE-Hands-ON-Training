@@ -66,13 +66,17 @@ Note: This exercise uses a pre-configured directory structure with all necessary
 
 **Reference Documentation**:
 - [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/) - Official Docker development guidelines
-- [Container Security Guide](https://cloud.google.com/architecture/best-practices-for-building-containers) - Google Cloud security recommendations
+- [Implement compute and container security](https://cloud.google.com/architecture/framework/security/compute-container-security) - Google Cloud security recommendations
 
 ### CI/CD and GitOps Principles
 
 **Essential Watching** (15 minutes):
-- [GitHub Actions in 100 Seconds](https://www.youtube.com/watch?v=R8_veQiYBjI) by Fireship - Quick CI/CD introduction
-- [GitOps Explained](https://www.youtube.com/watch?v=f5EpcWp0THw) by TechWorld with Nana - Modern deployment patterns
+- [GitHub Actions Tutorial - Basic Concepts and CI/CD Pipeline with Docker](https://www.youtube.com/watch?v=R8_veQiYBjI) by TechWorld with Nana - Quick CI/CD introduction
+- [What is GitOps, How GitOps works and Why it's so useful](https://www.youtube.com/watch?v=f5EpcWp0THw) by TechWorld with Nana - Modern deployment patterns
+
+**Alternative Learning Resources**:
+- [GitHub Actions Documentation - Quickstart](https://docs.github.com/en/actions/quickstart) - Official getting started guide
+- [GitOps Guide by Weaveworks](https://www.weave.works/technologies/gitops/) - Comprehensive GitOps concepts
 
 **Reference Documentation**:
 - [GitHub Actions Documentation](https://docs.github.com/en/actions) - Complete workflow automation guide
@@ -156,7 +160,7 @@ Review the automated CI/CD pipeline configuration that handles testing, building
 
 ```bash
 # Examine the GitHub Actions workflow
-cat .github/workflows/build-and-push.yml
+cat ../../.github/workflows/build-and-push.yml
 ```
 
 The workflow implements comprehensive automation including application testing with flake8 and bandit, container image building with Docker Buildx, security scanning with Trivy, and automated pushing to Google Container Registry with proper authentication and tagging strategies.
@@ -222,7 +226,7 @@ docker run -d -p 8080:8080 --name sre-app-test sre-demo-app:local
 
 Expected output:
 ```
-a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890
+cdc0efee1cdcbb50263daa5449a3c934486f7af8d3838081197c821c231b57b2
 ```
 
 The container runs in detached mode with port forwarding configured to allow testing of the containerized application endpoints.
@@ -242,7 +246,7 @@ Expected output:
   "environment": "production",
   "message": "Welcome to sre-demo-app!",
   "status": "healthy",
-  "timestamp": 1693834567.123,
+  "timestamp": 1756767367.1722598,
   "version": "1.0.0"
 }
 ```
@@ -255,7 +259,7 @@ curl http://localhost:8080/stores
 Expected output:
 ```json
 {
-  "processing_time": 0.342,
+  "processing_time": 0.296,
   "stores": [
     {
       "id": 1,
@@ -289,7 +293,7 @@ Expected output:
     "memory": "ok"
   },
   "status": "healthy",
-  "timestamp": 1693834567.456,
+  "timestamp": 1756767389.5029552,
   "version": "1.0.0"
 }
 ```
@@ -303,13 +307,13 @@ Expected output:
 ```
 # HELP python_gc_objects_collected_total Objects collected during gc
 # TYPE python_gc_objects_collected_total counter
-python_gc_objects_collected_total{generation="0"} 42.0
-# HELP http_requests_total Total number of HTTP requests
-# TYPE http_requests_total counter
-http_requests_total{endpoint="home",method="GET",status_code="200"} 1.0
-# HELP application_info Application information
-# TYPE application_info gauge
-application_info{app_name="sre-demo-app",environment="production",version="1.0.0"} 1.0
+python_gc_objects_collected_total{generation="0"} 566.0
+python_gc_objects_collected_total{generation="1"} 53.0
+python_gc_objects_collected_total{generation="2"} 0.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="11",patchlevel="13",version="3.11.13"} 1.0
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
 ```
 
 The containerized application should respond identically to the non-containerized version from Exercise 1, demonstrating that containerization preserves all SRE instrumentation and business functionality.
@@ -324,18 +328,6 @@ docker exec -it sre-app-test /bin/bash
 ```
 
 Inside the container, verify application processes and user configuration:
-
-```bash
-# Check application processes and user
-ps aux
-```
-
-Expected output:
-```
-USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-appuser        1  0.1  0.8 123456  8192 ?        Ss   14:30   0:01 python -m app.main
-appuser       23  0.0  0.1  12345  1024 pts/0    Ss   14:35   0:00 /bin/bash
-```
 
 ```bash
 # Verify current user (should be non-root)
@@ -354,11 +346,11 @@ ls -la /app
 
 Expected output:
 ```
-total 12
-drwxr-xr-x 3 appuser appuser  96 Sep  1 14:30 .
-drwxr-xr-x 1 root    root     17 Sep  1 14:30 ..
-drwxr-xr-x 2 appuser appuser  96 Sep  1 14:30 app
--rw-r--r-- 1 appuser appuser  89 Sep  1 14:30 requirements.txt
+total 24
+drwxr-xr-x 1 appuser appuser 4096 Sep  1 22:55 .
+drwxr-xr-x 1 root    root    4096 Sep  1 22:55 ..
+drwxr-xr-x 1 appuser appuser 4096 Aug 31 23:09 app
+-rw-rw-rw- 1 appuser appuser   89 Aug 31 23:09 requirements.txt
 ```
 
 ```bash
@@ -409,11 +401,24 @@ First, authenticate and configure your Google Cloud project:
 gcloud auth login
 ```
 
-```bash
-# Set your project ID (replace with your actual project ID)
-export PROJECT_ID="your-project-id-here"
-gcloud config set project $PROJECT_ID
+Expected output:
 ```
+Go to the following link in your browser, and complete the sign-in prompts:
+    https://accounts.google.com/o/oauth2/auth?response_type=code&client_id=...
+Once finished, enter the verification code provided in your browser: 4/0AVMBs...
+You are now logged in as [your-email@gmail.com].
+Your current project is [None].  You can change this setting by running:
+  $ gcloud config set project PROJECT_ID
+```
+
+```bash
+# Set your project ID using the Project ID (not the project name)
+# Find your Project ID in the Google Cloud Console
+export PROJECT_ID="your-project-id-here"
+gcloud config set project "$PROJECT_ID"
+```
+
+**Important**: Use the **Project ID**, not the project name. Project IDs cannot contain spaces and are usually lowercase with hyphens (e.g., `my-trial-project-123456`). You can find your Project ID in the Google Cloud Console dashboard.
 
 Expected output:
 ```
@@ -518,34 +523,36 @@ These encrypted secrets allow GitHub Actions to authenticate with Google Cloud s
 
 ### Step 11: Understand the GitHub Actions Workflow
 
-The provided GitHub Actions workflow implements a comprehensive CI/CD pipeline with multiple validation and security stages.
+The GitHub Actions workflow defines a CI/CD pipeline that validates code quality, performs security checks, builds the container image, and pushes it to a registry.
 
-Examine the workflow structure and job dependencies:
+Workflow files must be located in `.github/workflows/` at the repository root. For this exercise, the relevant workflow is named `build-and-push.yml`.
+
+To examine the workflow structure and job dependencies:
 
 ```bash
-# Review the workflow file structure
-head -30 .github/workflows/build-and-push.yml
+# Review the workflow file structure (from exercise directory)
+head -30 ../../.github/workflows/build-and-push.yml
 ```
 
-The workflow includes two main jobs: `test-application` for code quality and security validation, and `build-and-push` for container creation and registry upload. The jobs are configured with proper dependency relationships to ensure testing completes before building.
+The workflow defines two jobs. The first, `test-application`, handles code linting with flake8, security analysis with bandit, and a basic startup check to catch issues before container creation. The second job, `build-and-push`, depends on the first and handles container image creation and registry upload.
 
-Review the testing phase configuration:
+To inspect the testing phase configuration:
 
 ```bash
 # Examine the application testing job
-sed -n '12,40p' .github/workflows/build-and-push.yml
+sed -n '12,40p' ../../.github/workflows/build-and-push.yml
 ```
 
-The testing phase performs code linting with flake8, security analysis with bandit, and application startup verification to catch issues before container creation.
+This phase ensures the application meets baseline quality and security standards before proceeding.
 
-Review the build and push phase configuration:
+To inspect the build and push phase configuration:
 
 ```bash
 # Examine the build and push job
-sed -n '42,80p' .github/workflows/build-and-push.yml
+sed -n '42,80p' ../../.github/workflows/build-and-push.yml
 ```
 
-The build phase includes Google Cloud authentication, Docker image creation with caching optimizations, security vulnerability scanning with Trivy, and automated registry upload with proper tagging strategies.
+This phase authenticates with Google Cloud, builds the image using Docker Buildx with caching optimizations, scans it with Trivy for vulnerabilities, and pushes it to Google Container Registry using structured tagging.
 
 ---
 
@@ -580,6 +587,11 @@ Create a dedicated feature branch for pipeline testing:
 git checkout -b exercise2-pipeline-test
 ```
 
+Expected output:
+```
+Switched to a new branch 'exercise2-pipeline-test'
+```
+
 ```bash
 # Verify you're on the feature branch
 git branch
@@ -587,8 +599,8 @@ git branch
 
 Expected output:
 ```
-  main
 * exercise2-pipeline-test
+  main
 ```
 
 This approach follows Git best practices by isolating pipeline testing from the main development branch and avoiding potential conflicts with other exercises.
@@ -612,6 +624,13 @@ git add .pipeline-test
 git commit -m "Test Exercise 2 container build pipeline"
 ```
 
+Expected output:
+```
+[exercise2-pipeline-test f1970f5] Test Exercise 2 container build pipeline
+ 1 file changed, 1 insertion(+)
+ create mode 100644 exercises/exercise2/.pipeline-test
+```
+
 ```bash
 # Push the feature branch to trigger the workflow
 git push origin exercise2-pipeline-test
@@ -619,17 +638,18 @@ git push origin exercise2-pipeline-test
 
 Expected output:
 ```
-Enumerating objects: 4, done.
-Counting objects: 100% (4/4), done.
-Delta compression using up to 2 threads.
-Compressing objects: 100% (2/2), done.
-Writing objects: 100% (3/3), 345 bytes | 345.00 KiB/s, done.
-Total 3 (delta 1), reused 0 (delta 0), pack-reused 0
+Enumerating objects: 220, done.
+Counting objects: 100% (220/220), done.
+Delta compression using up to 2 threads
+Compressing objects: 100% (185/185), done.
+Writing objects: 100% (220/220), 162.39 KiB | 10.83 MiB/s, done.
+Total 220 (delta 56), reused 114 (delta 16), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (56/56), done.
 remote: 
 remote: Create a pull request for 'exercise2-pipeline-test' on GitHub by visiting:
-remote:   https://github.com/your-username/kubernetes-sre-cloud-native/pull/new/exercise2-pipeline-test
+remote:      https://github.com/your-username/kubernetes-sre-cloud-native/pull/new/exercise2-pipeline-test
 remote: 
-To github.com:your-username/kubernetes-sre-cloud-native.git
+To https://github.com/your-username/kubernetes-sre-cloud-native
  * [new branch]      exercise2-pipeline-test -> exercise2-pipeline-test
 ```
 
