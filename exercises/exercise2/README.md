@@ -160,7 +160,7 @@ Review the automated CI/CD pipeline configuration that handles testing, building
 
 ```bash
 # Examine the GitHub Actions workflow
-cat .github/workflows/build-and-push.yml
+cat ../../.github/workflows/build-and-push.yml
 ```
 
 The workflow implements comprehensive automation including application testing with flake8 and bandit, container image building with Docker Buildx, security scanning with Trivy, and automated pushing to Google Container Registry with proper authentication and tagging strategies.
@@ -535,7 +535,7 @@ In production environments, CI/CD pipelines are more than just automation—they
 
 ```bash
 # Review the workflow file structure (from repository root)
-head -30 .github/workflows/build-and-push.yml
+head -30 ../../.github/workflows/build-and-push.yml
 ```
 
 **Expected Output (snippet):**
@@ -560,7 +560,7 @@ This shows the pipeline is triggered automatically on pushes and pull requests t
 
 ```bash
 # Examine the application testing job
-sed -n '12,40p' .github/workflows/build-and-push.yml
+sed -n '12,40p' ../../.github/workflows/build-and-push.yml
 ```
 
 **Expected Output (snippet):**
@@ -583,7 +583,7 @@ This phase validates code quality (`flake8`), scans for security vulnerabilities
 
 ```bash
 # Examine the build and push job
-sed -n '42,80p' .github/workflows/build-and-push.yml
+sed -n '42,80p' ../../.github/workflows/build-and-push.yml
 ```
 
 **Expected Output (snippet):**
@@ -638,7 +638,7 @@ Check the current state of your container registry:
 gcloud container images list --repository=gcr.io/$PROJECT_ID
 ```
 
-Expected output (for first-time Exercise 2):
+***Expected output***:
 
 ```bash
 ERROR: (gcloud.container.images.list) Bad status during token exchange: 404
@@ -804,7 +804,7 @@ git checkout main
 
 ```bash
 # Delete the local feature branch
-git branch -d exercise2-pipeline-test
+git branch -D exercise2-pipeline-test
 ```
 
 ```bash

@@ -1,10 +1,9 @@
 """
-SRE-Instrumented Flask Application
+SRE Demo Application Package
 
-A demonstration application that implements Site Reliability Engineering
-best practices including structured logging, Prometheus metrics, and
-proper health check endpoints for Kubernetes deployment.
+This package contains a Flask application designed for SRE training,
+including Prometheus metrics, health checks, and structured logging.
 """
 
 __version__ = "1.0.0"
-__author__ = "SRE Course"
+__author__ = "SRE Academy"

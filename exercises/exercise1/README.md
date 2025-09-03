@@ -132,14 +132,22 @@ Once your Codespace loads, install the cloud tools required for this course:
 ```bash
 # Install Google Cloud CLI
 curl -sSL https://sdk.cloud.google.com | bash
-exec -l $SHELL  # Reload shell to update PATH
+```
+
+```bash
+# Reload shell to update PATH
+exec -l $SHELL
 ```
 
 ```bash
 # Install kubectl (Kubernetes CLI)
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-rm kubectl  # Clean up downloaded file
+```
+
+```bash
+# Clean up downloaded file
+rm kubectl
 ```
 
 You're installing the Google Cloud CLI (gcloud) for managing Google Cloud Platform resources and kubectl for managing Kubernetes cluster resources. These tools are essential for later exercises where you'll deploy applications to Google Kubernetes Engine.
