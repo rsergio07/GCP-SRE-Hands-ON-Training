@@ -420,6 +420,13 @@ export PROJECT_ID="your-project-id-here"
 gcloud config set project "$PROJECT_ID"
 ```
 
+To find your Project ID in the console, follow these steps:
+
+1.  Open the **Google Cloud Console** in your browser.
+2.  In the blue header bar at the top, find the project selector. Your current project's name is displayed there. Click on it.
+3.  A pop-up window will appear, listing your recent projects. For each project, you will see both the **Project name** and the **Project ID**.
+4.  Copy the **Project ID** and use it to replace `your-project-id-here` in the next command.
+
 **Important**: Use the **Project ID**, not the project name. Project IDs cannot contain spaces and are usually lowercase with hyphens (e.g., `my-trial-project-123456`). You can find your Project ID in the Google Cloud Console dashboard.
 
 Expected output:
@@ -629,23 +636,19 @@ Container images stored in the registry are automatically scanned for security v
 
 ### Step 12: Verify Initial Registry State
 
-Before triggering the automated build pipeline, check the current state of your container registry.
-
-Check the current state of your container registry:
+Before triggering the automated build pipeline, confirm that your Artifact Registry repository exists and is empty.
 
 ```bash
-# List all images in your project's registry
-gcloud container images list --repository=gcr.io/$PROJECT_ID
+# List images currently in the repo (should be empty before your first push)
+gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app
 ```
 
-***Expected output***:
+**Expected output:**
 
 ```bash
-ERROR: (gcloud.container.images.list) Bad status during token exchange: 404
-b'{"errors":[{"code":"NAME_UNKNOWN","message":"Repository \"gcr.io\" not found"}]}\n'
+Listed 0 items.
 ```
 
-**This error is normal and expected** for new projects. Google Container Registry repositories are created automatically when the first image is pushed. This establishes our baseline - after the GitHub Actions workflow completes, this same command will show your newly built container image.
 
 ### Step 13: Create Feature Branch for Pipeline Testing
 
@@ -742,58 +745,44 @@ Navigate to your GitHub repository and monitor the workflow execution:
 
 The build process includes comprehensive logging for troubleshooting any issues that may occur during automated execution.
 
-### Step 16: Verify Container Registry Upload
+### Step 16: Verify Artifact Registry Upload
 
 Once the GitHub Actions workflow completes successfully, verify that your container image was uploaded to Google Container Registry with proper tags.
 
 Check that your registry now contains the built image:
 
 ```bash
-# List all images in your project's registry (should now show the built image)
-gcloud container images list --repository=gcr.io/$PROJECT_ID
+# List images created in the repository
+gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app
 ```
 
 ***Expected output (after successful build)***:
 
 ```
-NAME
-gcr.io/your-project-id/sre-demo-app
-```
+Listing items under project gcp-sre-lab, location us-central1, repository sre-demo-app.
 
-```bash
-# List specific tags for your application image
-gcloud container images list-tags gcr.io/$PROJECT_ID/sre-demo-app
-```
-
-***Expected output (after successful build)***:
-
-```
-DIGEST        TAGS                              TIMESTAMP
-sha256:1a2b3c  exercise2-pipeline-test-a1b2c3d  2024-09-01T14:30:45
-```
-
-```bash
-# Get detailed information about the latest image
-gcloud container images describe gcr.io/$PROJECT_ID/sre-demo-app:latest
-```
-
-***Expected output (after successful build)***:
-
-```
-image_summary:
-  digest: sha256:1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890
-  fully_qualified_digest: gcr.io/your-project-id/sre-demo-app@sha256:1a2b3c...
-  registry: gcr.io
-  repository: your-project-id/sre-demo-app
-package_vulnerability_summary:
-  vulnerabilities_by_severity:
-    MEDIUM: 2
-    LOW: 5
+IMAGE                                                             DIGEST                                                                   CREATE_TIME          UPDATE_TIME          SIZE
+us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app  sha256:24d20f39485a879ecebd3cdb408a2f9652135c36007baedef4b342c9ec70ae8d  2025-09-03T20:54:57  2025-09-03T20:54:57  53784367
 ```
 
 The transformation from an empty registry to a populated one with tagged images confirms that your GitHub Actions workflow successfully built, scanned, and uploaded your container image.
 
-### Step 17: Clean Up Feature Branch
+---
+
+### Step 17: Verify in the Google Cloud Console
+
+In addition to using the command-line, you can visually verify that your container images were pushed to Artifact Registry.
+
+1.  Navigate to the **Google Cloud Console** in your web browser.
+2.  Use the top search bar and type "**Artifact Registry**," then select the service from the results.
+3.  On the Artifact Registry page, click on your repository named `sre-demo-app`.
+4.  You should now see the list of all your container images, with the latest one at the top. You can click on the image to view its different digests and associated tags (e.g., `latest` and your branch name).
+
+Seeing the images and their tags in the UI confirms that your automated CI/CD pipeline is successfully publishing artifacts to the cloud.
+
+---
+
+### Step 18: Clean Up Feature Branch
 
 After successful pipeline testing, clean up the feature branch to maintain repository organization:
 
