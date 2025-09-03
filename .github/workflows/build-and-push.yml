@@ -12,8 +12,10 @@ on:
       - 'exercises/exercise2/**'
 
 env:
-  REGISTRY: gcr.io
+  REGISTRY: us-central1-docker.pkg.dev
+  REPOSITORY_NAME: sre-demo-app
   IMAGE_NAME: sre-demo-app
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
 
 jobs:
   test-application:
@@ -36,7 +38,7 @@ jobs:
         
     - name: Install testing and linting tools
       run: |
-        pip install flake8 bandit pytest
+        pip install flake8 bandit pytest psutil
         
     - name: Lint Python code
       run: |
@@ -46,12 +48,41 @@ jobs:
     - name: Run security analysis
       run: |
         cd exercises/exercise2
-        bandit -r app/ -f json || true
+        bandit -r app/ -f json -o bandit-report.json || true
+        bandit -r app/ || true
         
-    - name: Test application startup
+    - name: Test application startup and health
       run: |
         cd exercises/exercise2
-        timeout 10s python -m app.main || true
+        # Start application in background
+        python -m app.main &
+        APP_PID=$!
+        echo "Started application with PID: $APP_PID"
+        
+        # Wait for application to start
+        sleep 5
+        
+        # Test health endpoint
+        if curl -f http://localhost:8080/health; then
+          echo "Health check passed"
+        else
+          echo "Health check failed"
+          kill $APP_PID 2>/dev/null || true
+          exit 1
+        fi
+        
+        # Test main endpoint
+        if curl -f http://localhost:8080/; then
+          echo "Main endpoint test passed"
+        else
+          echo "Main endpoint test failed"
+          kill $APP_PID 2>/dev/null || true
+          exit 1
+        fi
+        
+        # Clean up
+        kill $APP_PID 2>/dev/null || true
+        echo "Application tests completed successfully"
 
   build-and-push:
     needs: test-application
@@ -73,13 +104,13 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
       
     - name: Configure Docker to use gcloud as credential helper
-      run: gcloud auth configure-docker
+      run: gcloud auth configure-docker us-central1-docker.pkg.dev
       
     - name: Extract metadata for Docker
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}
+        images: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
           type=sha,prefix={{branch}}-
@@ -111,16 +142,26 @@ jobs:
         # Get the first tag from the metadata for scanning
         IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
         echo "Scanning image: $IMAGE_TAG"
-        trivy image --exit-code 0 --severity HIGH,CRITICAL "$IMAGE_TAG"
+        
+        # Run security scan - exit code 1 will fail pipeline for HIGH/CRITICAL vulnerabilities
+        trivy image --exit-code 1 --severity HIGH,CRITICAL --format table "$IMAGE_TAG"
+        
+        # Also generate JSON report for archival (but don't fail on this)
+        trivy image --exit-code 0 --severity HIGH,CRITICAL --format json -o trivy-report.json "$IMAGE_TAG" || true
           
     - name: Display image information
       run: |
         echo "Container image successfully built and pushed:"
-        echo "Registry: ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}"
-        echo "Tags built: ${{ steps.meta.outputs.tags }}"
+        echo "Registry: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/${{ env.IMAGE_NAME }}"
+        echo "Tags built:"
+        echo "${{ steps.meta.outputs.tags }}"
         echo ""
         echo "Branch: ${{ github.ref_name }}"
         echo "Commit SHA: ${{ github.sha }}"
         echo ""
         echo "To pull this image:"
-        echo "docker pull ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
+        IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+        echo "docker pull $IMAGE_TAG"
+        echo ""
+        echo "To run this image:"
+        echo "docker run -p 8080:8080 $IMAGE_TAG"
