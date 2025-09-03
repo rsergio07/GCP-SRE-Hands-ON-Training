@@ -1,19 +1,20 @@
 # Exercise 6: Production CI/CD
 
 ## Table of Contents
-- [Introduction](#introduction)
-- [Learning Objectives](#learning-objectives)
-- [Prerequisites](#prerequisites)
-- [Theory Foundation](#theory-foundation)
-- [Understanding GitOps for SRE](#understanding-gitops-for-sre)
-- [Setting Up ArgoCD for GitOps](#setting-up-argocd-for-gitops)
-- [Implementing Automated Deployment Pipelines](#implementing-automated-deployment-pipelines)
-- [Deployment Safety and Validation Gates](#deployment-safety-and-validation-gates)
-- [Rollback Procedures and Automation](#rollback-procedures-and-automation)
-- [Pipeline Monitoring and Observability](#pipeline-monitoring-and-observability)
-- [Final Objective](#final-objective)
-- [Troubleshooting](#troubleshooting)
-- [Next Steps](#next-steps)
+
+* [Introduction](#introduction)
+* [Learning Objectives](#learning-objectives)
+* [Prerequisites](#prerequisites)
+* [Theory Foundation](#theory-foundation)
+* [Understanding GitOps for SRE](#understanding-gitops-for-sre)
+* [Setting Up ArgoCD for GitOps](#setting-up-argocd-for-gitops)
+* [Implementing Automated Deployment Pipelines](#implementing-automated-deployment-pipelines)
+* [Deployment Safety and Validation Gates](#deployment-safety-and-validation-gates)
+* [Rollback Procedures and Automation](#rollback-procedures-and-automation)
+* [Pipeline Monitoring and Observability](#pipeline-monitoring-and-observability)
+* [Final Objective](#final-objective)
+* [Troubleshooting](#troubleshooting)
+* [Next Steps](#next-steps)
 
 ---
 
@@ -197,19 +198,50 @@ argocd app get sre-demo-app
 
 The ArgoCD application configuration defines source repository, target cluster, synchronization policies, health check configuration, and automated sync settings that govern how deployments are managed.
 
+### Step 5b: Create Feature Branch for Pipeline Testing
+
+Use a feature branch to test the workflow’s **test-application job** (linting, security scan, startup validation) without triggering full deployments.
+
+```bash
+# Create and switch to a feature branch for testing
+git checkout -b exercise6-pipeline-test
+```
+
+```bash
+# Add a pipeline test file
+echo "Pipeline test for Exercise 6 - $(date)" > exercises/exercise6/.pipeline-test
+```
+
+```bash
+# Commit and push to trigger the workflow
+git add exercises/exercise6/.pipeline-test
+git commit -m "test: Trigger Exercise 6 pipeline checks"
+git push origin exercise6-pipeline-test
+```
+
+**Expected behavior**: only the **test-application job** runs.
+The container build, manifest updates, and deployment validation jobs will only run when changes are merged into `main`.
+
 ### Step 6: Test Automated Deployment
+
+> The **full pipeline (build, push, manifest update, ArgoCD validation)** only runs on `main`.
+> Use feature branches (`exercise*`) for safe testing, then merge into `main` to trigger production-grade deployments.
 
 Make a change to trigger the complete GitOps workflow:
 
 ```bash
 # Make a small change to trigger deployment
 echo "GitOps deployment test $(date)" >> app/config.py
+```
 
+```bash
 # Commit and push to trigger GitHub Actions
 git add .
 git commit -m "test: Trigger GitOps deployment workflow"
 git push origin main
+```
 
+```bash
 # Monitor the deployment process
 echo "Monitor GitHub Actions at: https://github.com/$(git config --get remote.origin.url | cut -d: -f2 | cut -d. -f1)/actions"
 echo "Monitor ArgoCD at: https://$ARGOCD_IP"
@@ -217,11 +249,30 @@ echo "Monitor ArgoCD at: https://$ARGOCD_IP"
 
 This process triggers GitHub Actions to build new container images, update Kubernetes manifests, sync changes via ArgoCD, and validate deployment success using your monitoring infrastructure.
 
+### Step 7: Clean Up Feature Branch
+
+After verifying that your feature branch ran tests successfully, delete it to keep your repository clean:
+
+```bash
+# Switch back to main
+git checkout main
+```
+
+```bash
+# Delete local feature branch
+git branch -d exercise6-pipeline-test
+```
+
+```bash
+# Delete remote feature branch
+git push origin --delete exercise6-pipeline-test
+```
+
 ---
 
 ## Deployment Safety and Validation Gates
 
-### Step 7: Implement SLO-Based Validation
+### Step 8: Implement SLO-Based Validation
 
 Configure deployment validation that uses your SLO metrics to determine success:
 
@@ -239,7 +290,7 @@ chmod +x scripts/deploy-validation.sh
 
 The validation system checks availability SLO compliance, latency SLO metrics, error rate thresholds, business operation success rates, and resource utilization patterns before marking deployments as successful.
 
-### Step 8: Configure Blue-Green Deployment Strategy
+### Step 9: Configure Blue-Green Deployment Strategy
 
 Implement blue-green deployments for zero-downtime updates:
 
@@ -256,7 +307,7 @@ cat scripts/blue-green-deploy.sh
 
 Blue-green deployment creates parallel environments, validates new version before traffic switch, provides instant rollback capability, and minimizes deployment risk through traffic management.
 
-### Step 9: Set Up Deployment Monitoring
+### Step 10: Set Up Deployment Monitoring
 
 Configure monitoring for deployment pipeline health:
 
@@ -276,7 +327,7 @@ Deployment monitoring tracks deployment frequency, success rates, rollback frequ
 
 ## Rollback Procedures and Automation
 
-### Step 10: Implement Automated Rollback
+### Step 11: Implement Automated Rollback
 
 Configure automated rollback based on SLO violations and alert conditions:
 
@@ -294,7 +345,7 @@ chmod +x scripts/rollback-automation.sh
 
 Automated rollback monitors SLO compliance post-deployment, triggers rollback on alert conditions, coordinates with ArgoCD for Git-based rollback, and provides notification to relevant teams.
 
-### Step 11: Test Rollback Scenarios
+### Step 12: Test Rollback Scenarios
 
 Simulate deployment issues to validate rollback automation:
 
@@ -318,7 +369,7 @@ This test validates that rollback automation correctly detects deployment issues
 
 ## Pipeline Monitoring and Observability
 
-### Step 12: Implement Deployment Pipeline Metrics
+### Step 13: Implement Deployment Pipeline Metrics
 
 Create comprehensive monitoring for your deployment pipeline:
 
@@ -335,7 +386,7 @@ cat monitoring/pipeline-queries.md
 
 Pipeline metrics include deployment frequency (lead time, deployment frequency), quality metrics (deployment success rate, rollback rate), and performance metrics (deployment duration, time to rollback).
 
-### Step 13: Configure Pipeline Alerting
+### Step 14: Configure Pipeline Alerting
 
 Set up alerts for deployment pipeline health:
 
@@ -352,7 +403,7 @@ argocd app sync sre-demo-app --force
 
 Pipeline alerting covers deployment failures, excessive rollback rates, SLO violations during deployment, ArgoCD sync failures, and deployment duration exceeding thresholds.
 
-### Step 14: Establish Deployment Metrics Dashboard
+### Step 15: Establish Deployment Metrics Dashboard
 
 Create comprehensive visibility into deployment pipeline performance:
 
