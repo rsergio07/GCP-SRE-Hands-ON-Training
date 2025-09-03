@@ -4,8 +4,10 @@ import time
 import random
 from datetime import datetime
 from flask import Flask, jsonify, request
-from prometheus_client import Counter, Histogram, Gauge, generate_latest
-from prometheus_client import CollectorRegistry, CONTENT_TYPE_LATEST
+from prometheus_client import (
+    Counter, Histogram, Gauge, generate_latest,
+    CollectorRegistry, CONTENT_TYPE_LATEST
+)
 import psutil
 from .config import Config
 
@@ -279,7 +281,10 @@ def internal_error(error):
 
 def main():
     """Main application entry point."""
-    logger.info(f"Starting SRE Demo Application on {app.config['HOST']}:{app.config['PORT']}")
+    logger.info(
+        f"Starting SRE Demo Application on "
+        f"{app.config['HOST']}:{app.config['PORT']}"
+    )
     logger.info(f"Environment: {app.config['ENVIRONMENT']}")
     logger.info(f"Debug mode: {app.config['DEBUG']}")
 
