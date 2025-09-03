@@ -390,6 +390,24 @@ Local testing validates your Dockerfile configuration and ensures that the autom
 
 ---
 
+### Introduction to CI/CD
+
+You have now successfully built, tested, and verified your containerized application in your local Codespace environment. This process validates that your `Dockerfile` and application code are working correctly.
+
+However, a manual process is not scalable or reliable for SRE. In a production environment, we use automated pipelines to handle these tasks, which is the core of **Continuous Integration and Continuous Delivery (CI/CD)**. The next steps will implement this automated pipeline.
+
+#### **Continuous Integration (CI)**
+
+**Continuous Integration** is the practice of frequently merging new code into a central repository. Every time a new code change is pushed, an automated system runs a series of tests to ensure the change doesn't break the existing application. The goal is to detect and address integration bugs and security vulnerabilities early. In this lab, your upcoming **GitHub Actions workflow** will act as your CI system, performing automated tasks such as code linting and security scanning.
+
+#### **Continuous Delivery (CD)**
+
+**Continuous Delivery** is the practice of automatically building and preparing the application for deployment to production. Once the CI phase is complete and all tests pass, the CD part of the pipeline takes over. It builds the final container image, runs a final security scan, and pushes it to a container registry like Artifact Registry. This ensures that a validated, ready-to-deploy artifact is always available.
+
+By implementing this CI/CD pipeline, we are "shifting left" on security and quality—catching issues at the earliest possible stage in the development lifecycle rather than discovering them in production. This practice aligns with core SRE principles of reliability, security, and automation.
+
+---
+
 ## Implementing Cloud-Based CI/CD
 
 ### Step 7: Configure Google Cloud Authentication
