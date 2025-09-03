@@ -474,14 +474,21 @@ Expected output:
 Created service account [github-actions-sre].
 ```
 
+**Now, grant the required permissions to the service account:**
+
 ```bash
-# Grant storage admin permissions for container registry
+# Add Artifact Registry Writer role to your service account
 gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:github-actions-sre@$PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
+  --role="roles/artifactregistry.writer"
+
+# Also add the reader role for completeness
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:github-actions-sre@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/artifactregistry.reader"
 ```
 
-The service account receives only the minimum permissions necessary to push container images to Google Container Registry, following the principle of least privilege for security.
+The service account receives only the minimum permissions necessary to push and pull container images from Artifact Registry, following the **principle of least privilege** for security.
 
 ### Step 9: Generate and Download Service Account Key
 
@@ -646,6 +653,8 @@ gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-d
 **Expected output:**
 
 ```bash
+Listing items under project gcp-sre-lab, location us-central1, repository sre-demo-app.
+
 Listed 0 items.
 ```
 
