@@ -819,7 +819,7 @@ Seeing the images and their tags in the UI confirms that your automated CI/CD pi
 
 ---
 
-## Step 18: Clean Up Your Container Images
+### Step 18: Clean Up Your Container Images
 
 To avoid incurring storage costs, it's a best practice to delete the container images you no longer need. The images you pushed to Artifact Registry in this exercise are no longer required for the course.
 
