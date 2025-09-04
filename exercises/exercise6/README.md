@@ -107,6 +107,10 @@ Your current deployment process from Exercise 2 uses GitHub Actions to build and
 
 ## Setting Up ArgoCD for GitOps
 
+### Preparing the Orchestration Engine
+
+You have defined your reliability targets and built a robust monitoring and alerting stack. The final step is to automate the deployment process itself to ensure consistency and reliability. This section focuses on setting up **ArgoCD**, the "orchestration engine" that will manage your deployments. ArgoCD continuously monitors your Git repository for changes and automatically synchronizes them to your cluster, eliminating manual intervention and providing a single source of truth for your entire production environment.
+
 ### Step 1: Deploy ArgoCD to Your Cluster
 
 Navigate to Exercise 6 and deploy ArgoCD using the provided automation:
@@ -114,14 +118,20 @@ Navigate to Exercise 6 and deploy ArgoCD using the provided automation:
 ```bash
 # Navigate to Exercise 6 directory
 cd exercises/exercise6
+```
 
+```bash
 # Examine the ArgoCD setup configuration
 cat scripts/setup-gitops.sh
+```
 
+```bash
 # Make setup script executable and run
 chmod +x scripts/setup-gitops.sh
 ./scripts/setup-gitops.sh
+```
 
+```bash
 # Monitor ArgoCD deployment
 kubectl get pods -n argocd -w
 ```
@@ -136,7 +146,9 @@ ArgoCD deployment typically takes 3-5 minutes. The script waits for all componen
 # Get ArgoCD external IP
 export ARGOCD_IP=$(kubectl get service argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "ArgoCD URL: https://$ARGOCD_IP"
+```
 
+```bash
 # Get initial admin password
 export ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
 echo "Admin username: admin"
@@ -166,6 +178,10 @@ This configuration tells ArgoCD to monitor your repository's `exercises/exercise
 
 ## Implementing Automated Deployment Pipelines
 
+### Connecting Code to the Cluster
+
+The core of a GitOps pipeline is the seamless integration between your application's code repository and the deployment environment. This section shows you how to connect your **GitHub Actions** workflow to your new ArgoCD setup. The process you'll build ensures that every approved code change automatically triggers a new container build, updates your Kubernetes manifests in Git, and then lets ArgoCD take over to manage the deployment to your cluster.
+
 ### Step 4: Enhance GitHub Actions for GitOps
 
 Update your GitHub Actions workflow to work with GitOps principles:
@@ -173,7 +189,9 @@ Update your GitHub Actions workflow to work with GitOps principles:
 ```bash
 # Examine the enhanced GitHub Actions workflow
 cat .github/workflows/gitops-deploy.yml
+```
 
+```bash
 # Review the automated deployment validation
 cat scripts/deploy-validation.sh
 ```
@@ -187,10 +205,14 @@ Create the ArgoCD application configuration for your SRE demo app:
 ```bash
 # Examine the ArgoCD application definition
 cat k8s/argocd-app.yaml
+```
 
+```bash
 # Apply the ArgoCD application
 kubectl apply -f k8s/argocd-app.yaml
+```
 
+```bash
 # Verify application is created in ArgoCD
 argocd app list
 argocd app get sre-demo-app
@@ -272,6 +294,10 @@ git push origin --delete exercise6-pipeline-test
 
 ## Deployment Safety and Validation Gates
 
+### The SRE Safety Net
+
+Automation is powerful, but it's only truly reliable when it includes safeguards. A key tenet of SRE is to build systems that fail gracefully and avoid human error. This section focuses on creating **deployment safety gates** that use your monitoring and alerting stack to validate deployments. You will learn how to ensure that a new version of your application is only considered "successful" if it doesn't violate your **SLO** targets for latency, traffic, and error rates.
+
 ### Step 8: Implement SLO-Based Validation
 
 Configure deployment validation that uses your SLO metrics to determine success:
@@ -279,10 +305,14 @@ Configure deployment validation that uses your SLO metrics to determine success:
 ```bash
 # Examine the SLO validation configuration
 cat monitoring/slo-queries.yaml
+```
 
+```bash
 # Review deployment validation script
 cat scripts/deploy-validation.sh
+```
 
+```bash
 # Test validation logic manually
 chmod +x scripts/deploy-validation.sh
 ./scripts/deploy-validation.sh test
@@ -297,10 +327,14 @@ Implement blue-green deployments for zero-downtime updates:
 ```bash
 # Examine blue-green deployment configuration
 cat k8s/deployment-blue-green.yaml
+```
 
+```bash
 # Review traffic switching configuration
 cat k8s/service-blue-green.yaml
+```
 
+```bash
 # Understand the blue-green orchestration
 cat scripts/blue-green-deploy.sh
 ```
@@ -315,7 +349,9 @@ Configure monitoring for deployment pipeline health:
 # Deploy deployment monitoring configuration
 cat monitoring/deployment-alerts.yaml
 kubectl apply -f monitoring/deployment-alerts.yaml
+```
 
+```bash
 # Check deployment-specific dashboards
 cat monitoring/deployment-dashboard.json
 gcloud monitoring dashboards create --config-from-file=monitoring/deployment-dashboard.json
@@ -327,6 +363,10 @@ Deployment monitoring tracks deployment frequency, success rates, rollback frequ
 
 ## Rollback Procedures and Automation
 
+### Minimizing Mean Time to Resolution (MTTR)
+
+Even with safety gates, a problematic deployment can occasionally slip through. The key to maintaining high reliability is to have a fast and reliable recovery mechanism. This section focuses on automating the recovery process. You will implement a system that automatically triggers a **rollback** to the last known good version of your application when an SLO alert fires, drastically reducing the time it takes to restore service availability and preventing user-facing impact.
+
 ### Step 11: Implement Automated Rollback
 
 Configure automated rollback based on SLO violations and alert conditions:
@@ -334,11 +374,15 @@ Configure automated rollback based on SLO violations and alert conditions:
 ```bash
 # Review rollback automation configuration
 cat policies/rollback-rules.yaml
+```
 
+```bash
 # Examine the rollback automation script
 cat scripts/rollback-automation.sh
 chmod +x scripts/rollback-automation.sh
+```
 
+```bash
 # Test rollback procedures
 ./scripts/rollback-automation.sh test
 ```
@@ -352,13 +396,19 @@ Simulate deployment issues to validate rollback automation:
 ```bash
 # Create a problematic deployment for testing
 echo "Creating test rollback scenario..."
+```
 
+```bash
 # Deploy a version that will fail health checks
 kubectl patch deployment sre-demo-app -p '{"spec":{"template":{"spec":{"containers":[{"name":"sre-demo-app","env":[{"name":"FAIL_HEALTH_CHECKS","value":"true"}]}]}}}}'
+```
 
+```bash
 # Monitor rollback automation
 ./scripts/rollback-automation.sh monitor
+```
 
+```bash
 # Verify rollback occurred successfully
 kubectl get deployment sre-demo-app -o yaml | grep -A5 -B5 env:
 ```
@@ -376,10 +426,14 @@ Create comprehensive monitoring for your deployment pipeline:
 ```bash
 # Deploy pipeline monitoring configuration
 kubectl apply -f monitoring/pipeline-metrics.yaml
+```
 
+```bash
 # Create pipeline observability dashboard
 gcloud monitoring dashboards create --config-from-file=dashboards/pipeline-dashboard.json
+```
 
+```bash
 # Review pipeline health queries
 cat monitoring/pipeline-queries.md
 ```
@@ -393,10 +447,14 @@ Set up alerts for deployment pipeline health:
 ```bash
 # Create deployment pipeline alert policies
 gcloud alpha monitoring policies create --policy-from-file=alerting/deployment-alerts.yaml
+```
 
+```bash
 # Configure pipeline notification channels
 kubectl apply -f k8s/pipeline-notifications.yaml
+```
 
+```bash
 # Test pipeline alerting
 argocd app sync sre-demo-app --force
 ```
@@ -410,11 +468,15 @@ Create comprehensive visibility into deployment pipeline performance:
 ```bash
 # Access your deployment dashboard
 echo "Deployment Dashboard: https://console.cloud.google.com/monitoring/dashboards?project=$(gcloud config get-value project)"
+```
 
+```bash
 # Review key deployment metrics
 export PROMETHEUS_IP=$(kubectl get service prometheus-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "Prometheus deployment metrics: http://$PROMETHEUS_IP:9090"
+```
 
+```bash
 # Check ArgoCD deployment status
 echo "ArgoCD applications: https://$ARGOCD_IP/applications"
 ```

@@ -108,6 +108,10 @@ Your deployed application already provides:
 
 ## Configuring Application Metrics for Production
 
+### Preparing the Data Layer
+
+Before you can build a robust monitoring system, you must first ensure that the data you intend to monitor is correctly exposed and formatted. This section focuses on verifying that the SRE-instrumented application you deployed in the previous exercises is properly exposing its Prometheus metrics. This step is critical because it confirms the foundation of our observability stack is solid before we proceed with data collection.
+
 ### Step 1: Verify Current Metric Exposure
 
 First, confirm that your deployed application is properly exposing metrics in the Kubernetes environment:
@@ -115,14 +119,20 @@ First, confirm that your deployed application is properly exposing metrics in th
 ```bash
 # Navigate to Exercise 4 directory
 cd exercises/exercise4
+```
 
+```bash
 # Get your application's external IP
 export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "Application URL: http://$EXTERNAL_IP"
+```
 
+```bash
 # Examine current metrics endpoint
 curl -s http://$EXTERNAL_IP/metrics | head -20
+```
 
+```bash
 # Check specific application metrics
 curl -s http://$EXTERNAL_IP/metrics | grep -E "(http_requests_total|business_operations)"
 ```
@@ -134,22 +144,105 @@ Your application should be exposing Prometheus-formatted metrics including HTTP 
 Create representative metric data to ensure your monitoring system has meaningful information to display:
 
 ```bash
-# Generate diverse application traffic
+# Get the external IP of the app (re-run if you recreated the Service)
+export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "Application URL: http://$EXTERNAL_IP"
+```
+
+```bash
+# Example output
+Application URL: http://34.86.123.45
+```
+
+```bash
+# Generate diverse application traffic (50 iterations)
 for i in {1..50}; do
   curl -s http://$EXTERNAL_IP/ > /dev/null
   curl -s http://$EXTERNAL_IP/stores > /dev/null
   curl -s http://$EXTERNAL_IP/stores/1 > /dev/null
   curl -s http://$EXTERNAL_IP/health > /dev/null
-  
-  # Introduce some variety in timing
+
+  # Randomized sleep to vary request timing (requires 'bc')
   sleep $(echo "scale=1; $RANDOM/32767" | bc)
 done
+```
 
-# Verify metrics have updated
+```bash
+# (No output expected)
+# The loop sends requests quietly; you'll verify impact via /metrics next.
+```
+
+```bash
+# Verify metrics have updated (request and business counters)
 curl -s http://$EXTERNAL_IP/metrics | grep -E "(http_requests_total|business_operations)" | head -10
 ```
 
-This traffic generation creates realistic metric patterns that will be visible in your monitoring dashboards and useful for testing alerting configurations.
+```bash
+# Example output (values will differ)
+http_requests_total{endpoint="/",method="GET",status_code="200"} 52
+http_requests_total{endpoint="/stores",method="GET",status_code="200"} 50
+http_requests_total{endpoint="/stores/1",method="GET",status_code="200"} 50
+http_requests_total{endpoint="/health",method="GET",status_code="200"} 50
+business_operations_total{operation="list_stores",status="success"} 50
+business_operations_total{operation="get_store",status="success"} 50
+business_operations_total{operation="health_check",status="success"} 50
+# Depending on your app’s labeling, you might also see labels like:
+# {job="sre-demo-app",pod="sre-demo-app-7b9d4c5c8-ktz2f",namespace="default"}
+```
+
+```bash
+# (Optional) Watch metrics change while sending traffic from another terminal
+watch -n 2 'curl -s http://$EXTERNAL_IP/metrics | grep -E "(http_requests_total|business_operations)" | head -10'
+```
+
+```bash
+# Example watch snapshot
+Every 2.0s: curl -s http://34.86.123.45/metrics | grep -E "(http_requests_total|business_operations)" | head -10
+
+http_requests_total{endpoint="/stores",method="GET",status_code="200"} 175
+http_requests_total{endpoint="/",method="GET",status_code="200"} 180
+business_operations_total{operation="list_stores",status="success"} 175
+business_operations_total{operation="get_store",status="success"} 175
+```
+
+```bash
+# (Optional) Quick load burst to make counters jump visibly
+for i in {1..100}; do curl -s http://$EXTERNAL_IP/stores > /dev/null; done
+```
+
+```bash
+# Example follow-up check
+curl -s http://$EXTERNAL_IP/metrics | grep 'endpoint="/stores"' | head -3
+```
+
+```bash
+# Example output (note the increased counter)
+http_requests_total{endpoint="/stores",method="GET",status_code="200"} 275
+```
+
+```bash
+# (Optional) If 'bc' is not available, use a simple fixed sleep instead
+for i in {1..20}; do
+  curl -s http://$EXTERNAL_IP/ > /dev/null
+  sleep 0.5
+done
+```
+
+```bash
+# Example verification
+curl -s http://$EXTERNAL_IP/metrics | grep 'endpoint="/"' | head -3
+```
+
+```bash
+# Example output
+http_requests_total{endpoint="/",method="GET",status_code="200"} 200
+```
+
+Notes:
+
+* Counters are **monotonic**; they only increase until the pod restarts.
+* Label sets vary by your app/instrumentation (you may see `job`, `pod`, `namespace`, `instance`, etc.).
+* If grep returns nothing, ensure the service is reachable and your app exports those metric names
 
 ### Understanding Kubernetes Metric Discovery
 
@@ -161,6 +254,10 @@ This traffic generation creates realistic metric patterns that will be visible i
 
 ## Deploying Prometheus to GKE
 
+### Setting Up Your Data Collector
+
+You have confirmed that your application is emitting metrics, but those metrics are only useful if they can be collected and stored. This section introduces and deploys **Prometheus**, an industry-standard monitoring system, to your GKE cluster. Prometheus will be configured to automatically discover and "scrape" metrics from your application pods, creating the time-series database that will power your dashboards and alerts.
+
 ### Step 3: Deploy Prometheus Using Kubernetes Manifests
 
 Examine the provided Prometheus configuration and deploy it to your cluster:
@@ -168,10 +265,14 @@ Examine the provided Prometheus configuration and deploy it to your cluster:
 ```bash
 # Create monitoring directory structure  
 mkdir -p k8s/monitoring
+```
 
+```bash
 # Examine the Prometheus configuration
 cat k8s/monitoring/prometheus-config.yaml
+```
 
+```bash
 # Review the deployment configuration
 cat k8s/monitoring/prometheus-deployment.yaml
 ```
@@ -184,13 +285,19 @@ The Prometheus configuration implements service discovery to automatically find 
 # Deploy Prometheus configuration and deployment
 kubectl apply -f k8s/monitoring/prometheus-config.yaml
 kubectl apply -f k8s/monitoring/prometheus-deployment.yaml
+```
 
+```bash
 # Wait for Prometheus to be ready
 kubectl wait --for=condition=available --timeout=300s deployment/prometheus
+```
 
+```bash
 # Get Prometheus service external IP
 kubectl get services prometheus-service
+```
 
+```bash
 # Check Prometheus pod logs
 kubectl logs -l app=prometheus --tail=50
 ```
@@ -203,7 +310,9 @@ Prometheus will take 2-3 minutes to fully initialize and begin scraping metrics 
 # Get Prometheus external IP
 export PROMETHEUS_IP=$(kubectl get service prometheus-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "Prometheus URL: http://$PROMETHEUS_IP:9090"
+```
 
+```bash
 # Wait for LoadBalancer IP assignment (may take a few minutes)
 while [ -z "$PROMETHEUS_IP" ] || [ "$PROMETHEUS_IP" = "null" ]; do
   echo "Waiting for LoadBalancer IP..."
@@ -232,44 +341,56 @@ The setup script automates API enablement, Prometheus deployment, Google Cloud i
 
 ## Integrating with Google Cloud Monitoring
 
-### Step 7: Enable Google Cloud Monitoring APIs
+### Step 6: Enable Google Cloud Monitoring APIs
 
 ```bash
 # Enable required Google Cloud APIs for monitoring
 gcloud services enable monitoring.googleapis.com
 gcloud services enable logging.googleapis.com
 gcloud services enable clouddebugger.googleapis.com
+```
 
+```bash
 # Verify APIs are enabled
 gcloud services list --enabled --filter="name:(monitoring.googleapis.com OR logging.googleapis.com)"
 ```
 
 Google Cloud Monitoring will automatically collect GKE infrastructure metrics, but we'll also configure it to ingest our custom application metrics.
 
-### Step 6: Configure Managed Service for Prometheus
+### Unifying Observability with the Cloud
+
+While a self-managed Prometheus instance is powerful, a production-grade SRE stack benefits from a managed solution. This section shows you how to integrate your self-hosted Prometheus with **Google Cloud Monitoring**. This integration provides unified visibility by combining your custom application metrics with the infrastructure metrics automatically collected by Google Cloud, giving you a single pane of glass for all your observability data.
+
+### Step 7: Configure Managed Service for Prometheus
 
 Google Cloud provides a managed Prometheus service that can ingest metrics directly from your Kubernetes cluster:
 
 ```bash
 # Examine the Google Managed Prometheus configuration
 cat k8s/monitoring/gmp-config.yaml
+```
 
+```bash
 # Apply the configuration
 kubectl apply -f k8s/monitoring/gmp-config.yaml
 ```
 
 The Google Managed Prometheus configuration creates PodMonitor resources that automatically discover your application pods and send metrics to Google Cloud Monitoring for unified observability.
 
-### Step 7: Verify Google Cloud Monitoring Integration
+### Step 8: Verify Google Cloud Monitoring Integration
 
 ```bash
 # Check if Google Cloud Monitoring is collecting metrics
 echo "Check Google Cloud Monitoring at:"
 echo "https://console.cloud.google.com/monitoring/overview?project=$PROJECT_ID"
+```
 
+```bash
 # List available metric types (this may take a few minutes to populate)
 gcloud logging metrics list --limit=10
+```
 
+```bash
 # Test custom metrics query (replace PROJECT_ID with your actual project)
 gcloud monitoring metrics list --filter="metric.type:\"custom.googleapis.com/opencensus/http_requests_total\"" --limit=5
 ```
@@ -280,7 +401,11 @@ It may take 5-10 minutes for custom metrics to appear in Google Cloud Monitoring
 
 ## Creating Custom Dashboards and Visualizations
 
-### Step 8: Create SRE-Focused Prometheus Queries
+### Translating Data into Insights
+
+Raw metrics are just numbers. For an SRE team, the real value lies in translating that data into actionable insights. This section focuses on the final step of the monitoring pipeline: building a dashboard. You will create and test queries based on the **four golden signals of monitoring** (latency, traffic, errors, and saturation) and use them to build a custom dashboard in Google Cloud Monitoring that tells a clear story about your application's health.
+
+### Step 9: Create SRE-Focused Prometheus Queries
 
 Review the comprehensive query library provided for production monitoring:
 
@@ -297,14 +422,16 @@ cat monitoring/sre-queries.md
 
 These queries form the foundation of your SRE dashboard, focusing on the four golden signals: latency, traffic, errors, and saturation.
 
-### Step 9: Create Google Cloud Monitoring Dashboard
+### Step 10: Create Google Cloud Monitoring Dashboard
 
 Create a comprehensive dashboard using the provided configuration:
 
 ```bash
 # Examine the dashboard configuration
 cat monitoring/dashboard-config.json
+```
 
+```bash
 # Create the dashboard using gcloud CLI
 gcloud monitoring dashboards create --config-from-file=monitoring/dashboard-config.json
 
@@ -312,7 +439,7 @@ echo "Dashboard created! View it at:"
 echo "https://console.cloud.google.com/monitoring/dashboards?project=$PROJECT_ID"
 ```
 
-### Step 10: Access and Customize Your Dashboard
+### Step 11: Access and Customize Your Dashboard
 
 ```bash
 # Get direct link to your monitoring dashboard
@@ -328,14 +455,16 @@ Access the Google Cloud Console and navigate to your custom dashboard to visuali
 
 ## Implementing SRE Monitoring Best Practices
 
-### Step 11: Test Your Monitoring Stack End-to-End
+### Step 12: Test Your Monitoring Stack End-to-End
 
 Use the provided verification script to test your complete monitoring infrastructure:
 
 ```bash
 # Make the verification script executable
 chmod +x scripts/verify-monitoring.sh
+```
 
+```bash
 # Run comprehensive monitoring verification
 ./scripts/verify-monitoring.sh
 
@@ -347,14 +476,16 @@ chmod +x scripts/verify-monitoring.sh
 
 The verification script generates realistic load patterns, tests Prometheus queries, checks service discovery, and validates Google Cloud Monitoring integration.
 
-### Step 12: Monitor Real-Time Metrics
+### Step 13: Monitor Real-Time Metrics
 
 Generate load and observe how your monitoring stack captures the activity:
 
 ```bash
 # Generate continuous load in background (optional manual approach)
 export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+```
 
+```bash
 # Simple load generation loop
 for i in {1..100}; do
   curl -s http://$EXTERNAL_IP/ > /dev/null &

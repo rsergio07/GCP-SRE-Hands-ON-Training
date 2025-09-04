@@ -70,15 +70,23 @@ Before starting this exercise, ensure you have completed:
 
 ## Implementing Chaos Engineering
 
+### Proactively Validating System Resilience
+
+You have built a robust system with dashboards and alerts, but how do you know if it will truly hold up under pressure? **Chaos engineering** is the discipline of proactively and safely testing the resilience of your platform by injecting controlled failures into a production-like environment. This section guides you through deploying a chaos engineering framework to your cluster and running experiments to validate your assumptions about your system's behavior. The goal is not to break things but to discover weaknesses before they can cause a real-world incident.
+
 ### Step 1: Deploy Chaos Engineering Infrastructure
 
 ```bash
 # Navigate to Exercise 8
 cd exercises/exercise8
+```
 
+```bash
 # Deploy chaos engineering tools
 kubectl apply -f chaos/chaos-experiments.yaml
+```
 
+```bash
 # Verify chaos infrastructure
 kubectl get pods -n litmus
 ```
@@ -89,7 +97,9 @@ kubectl get pods -n litmus
 # Execute chaos testing suite
 chmod +x scripts/run-chaos-tests.sh
 ./scripts/run-chaos-tests.sh pod-failure
+```
 
+```bash
 # Monitor during chaos testing
 kubectl get pods -l app=sre-demo-app -w
 ```
@@ -101,10 +111,14 @@ Monitor your application's response to controlled failures while observing metri
 ```bash
 # Test network chaos
 ./scripts/run-chaos-tests.sh network-latency
+```
 
+```bash
 # Test resource chaos
 ./scripts/run-chaos-tests.sh resource-stress
+```
 
+```bash
 # Generate chaos report
 ./scripts/run-chaos-tests.sh report
 ```
@@ -113,12 +127,18 @@ Monitor your application's response to controlled failures while observing metri
 
 ## Performance Optimization
 
+### A Data-Driven Approach to Efficiency
+
+With your observability stack in place, you can now move from simply monitoring your application to actively **optimizing its performance**. This section focuses on using the data you've collected to identify bottlenecks and inefficiencies in your platform. You will implement advanced performance monitoring, run structured analysis to pinpoint areas for improvement, and then apply data-driven optimizations to ensure your application is as responsive and resource-efficient as possible.
+
 ### Step 4: Implement Advanced Performance Monitoring
 
 ```bash
 # Deploy performance monitoring
 kubectl apply -f monitoring/advanced-sre-metrics.yaml
+```
 
+```bash
 # Configure performance dashboards
 gcloud monitoring dashboards create --config-from-file=monitoring/performance-dashboard.json
 ```
@@ -129,20 +149,30 @@ gcloud monitoring dashboards create --config-from-file=monitoring/performance-da
 # Execute performance analysis
 chmod +x scripts/performance-analysis.sh
 ./scripts/performance-analysis.sh baseline
+```
 
+```bash
 # Optimize based on results
 ./scripts/performance-analysis.sh optimize
+```
 
+```bash
 # Validate improvements
 ./scripts/performance-analysis.sh validate
 ```
+
+### Predicting the Future and Planning for Growth
+
+A key measure of a mature SRE practice is its ability to be predictive rather than just reactive. **Capacity planning** is the process of using historical performance data and business growth projections to ensure your platform can handle future demand. This section guides you through analyzing your current resource utilization and trends to predict when you will need to scale your infrastructure. This proactive approach prevents unexpected performance degradation and costly over-provisioning, ensuring your platform can grow reliably with the business.
 
 ### Step 6: Implement Capacity Planning
 
 ```bash
 # Deploy capacity planning configuration
 kubectl apply -f performance/optimization-config.yaml
+```
 
+```bash
 # Run capacity analysis
 ./scripts/performance-analysis.sh capacity-planning
 ```
@@ -158,7 +188,9 @@ Review comprehensive SRE metrics for mature operations:
 ```bash
 # Examine advanced metrics configuration
 cat monitoring/advanced-sre-metrics.yaml
+```
 
+```bash
 # Apply advanced monitoring
 kubectl apply -f monitoring/advanced-sre-metrics.yaml
 ```
@@ -168,7 +200,9 @@ kubectl apply -f monitoring/advanced-sre-metrics.yaml
 ```bash
 # Run comprehensive platform validation
 ./scripts/run-chaos-tests.sh comprehensive
+```
 
+```bash
 # Generate final assessment
 ./scripts/performance-analysis.sh final-report
 ```

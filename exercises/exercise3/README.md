@@ -107,6 +107,10 @@ Your Flask application will be deployed using multiple Kubernetes resources that
 
 ## Setting Up Google Kubernetes Engine
 
+### Preparing the Cloud Foundation
+
+Before you can deploy your application to Kubernetes, you need to provision the underlying infrastructure. This section guides you through setting up your Google Cloud project and creating a **Google Kubernetes Engine (GKE)** cluster. We will use **GKE Autopilot**, a managed service that automates infrastructure management, allowing you to focus on application reliability and scaling—a core SRE principle.
+
 ### Step 1: Prepare Your Development Environment
 
 Navigate to Exercise 3 and examine the provided Kubernetes configurations:
@@ -114,13 +118,19 @@ Navigate to Exercise 3 and examine the provided Kubernetes configurations:
 ```bash
 # Navigate to Exercise 3 directory
 cd exercises/exercise3
+```
 
+```bash
 # Examine the directory structure
 ls -la
+```
 
+```bash
 # Look at the Kubernetes manifests
 ls -la k8s/
+```
 
+```bash
 # Check the setup scripts
 ls -la scripts/
 ```
@@ -134,14 +144,20 @@ Set up your Google Cloud project configuration for Exercise 3:
 ```bash
 # Set your project ID (replace with your actual project ID)
 export PROJECT_ID="your-project-id-here"
+```
 
+```bash
 # Verify your project is set correctly
 gcloud config set project $PROJECT_ID
 gcloud config get-value project
+```
 
+```bash
 # Verify your container images exist from Exercise 2
 gcloud container images list --repository=gcr.io/$PROJECT_ID
+```
 
+```bash
 # Check for the sre-demo-app image specifically
 gcloud container images list-tags gcr.io/$PROJECT_ID/sre-demo-app --limit=5
 ```
@@ -155,12 +171,11 @@ Use the provided setup script to create your GKE cluster and configure the envir
 ```bash
 # Make the setup script executable
 chmod +x scripts/setup.sh
+```
 
+```bash
 # Run the setup script (this will take 5-10 minutes)
 ./scripts/setup.sh
-
-# Alternative: specify custom cluster name and location
-# ./scripts/setup.sh my-cluster us-west1
 ```
 
 The setup script automates Google Cloud API activation, GKE Autopilot cluster creation, kubectl configuration, and Kubernetes manifest updates with your project ID. This process typically takes 5-10 minutes for cluster provisioning.
@@ -178,6 +193,10 @@ Monitor the script output for any errors. The script will wait for cluster creat
 
 ## Deploying Your Application to Kubernetes
 
+### Bringing Your Application to Life
+
+You have now built a container image and set up your Kubernetes cluster. This is the moment where those two components meet. This section focuses on the **declarative** nature of Kubernetes deployments. Instead of manually running a container, you will define the desired state of your application using YAML files, and Kubernetes will work to continuously maintain that state. This is the essence of modern, reliable, and automated deployments.
+
 ### Step 4: Examine the Kubernetes Manifests
 
 Before deploying, understand each Kubernetes resource and its SRE significance:
@@ -185,13 +204,19 @@ Before deploying, understand each Kubernetes resource and its SRE significance:
 ```bash
 # Examine the deployment configuration
 cat k8s/deployment.yaml
+```
 
+```bash
 # Look at the service configuration
 cat k8s/service.yaml
+```
 
+```bash
 # Check the configuration management
 cat k8s/configmap.yaml
+```
 
+```bash
 # Review the autoscaling configuration
 cat k8s/hpa.yaml
 ```
@@ -205,7 +230,9 @@ Deploy your application using the provided deployment script:
 ```bash
 # Make the deploy script executable
 chmod +x scripts/deploy.sh
+```
 
+```bash
 # Deploy the application with full verification
 ./scripts/deploy.sh
 
@@ -225,13 +252,19 @@ Watch your application deployment in real-time:
 ```bash
 # Watch pods as they start
 kubectl get pods -l app=sre-demo-app -w
+```
 
+```bash
 # In another terminal, check deployment status
 kubectl get deployments
+```
 
+```bash
 # Check service status and external IP
 kubectl get services
+```
 
+```bash
 # View events for troubleshooting
 kubectl get events --sort-by=.metadata.creationTimestamp
 ```
@@ -249,10 +282,14 @@ Examine how your application is configured for production resource usage:
 ```bash
 # Check resource requests and limits
 kubectl describe deployment sre-demo-app
+```
 
+```bash
 # View current resource usage
 kubectl top pods -l app=sre-demo-app
+```
 
+```bash
 # Check node resource availability
 kubectl top nodes
 ```
@@ -268,10 +305,14 @@ Test how Kubernetes uses your application's health endpoints:
 ```bash
 # Get detailed pod information including health checks
 kubectl describe pods -l app=sre-demo-app
+```
 
+```bash
 # Check health check configuration
 kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].livenessProbe}'
+```
 
+```bash
 # Check readiness probe configuration
 kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].readinessProbe}'
 ```
@@ -288,13 +329,29 @@ Verify that all your SRE instrumentation works correctly in the Kubernetes envir
 # Get the external IP address
 export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "Application URL: http://$EXTERNAL_IP"
+```
 
-# Test all endpoints
+```bash
+# Test the root endpoint
 curl http://$EXTERNAL_IP/
-curl http://$EXTERNAL_IP/stores
-curl http://$EXTERNAL_IP/health
-curl http://$EXTERNAL_IP/metrics
+```
 
+```bash
+# Test the stores endpoint
+curl http://$EXTERNAL_IP/stores
+```
+
+```bash
+# Test the health endpoint
+curl http://$EXTERNAL_IP/health
+```
+
+```bash
+# Test the metrics endpoint
+curl http://$EXTERNAL_IP/metrics
+```
+
+```bash
 # Test error handling
 for i in {1..10}; do
   curl -s http://$EXTERNAL_IP/stores | grep -E "(error|stores)"
@@ -307,6 +364,10 @@ All endpoints should work identically to Exercise 1 and 2, demonstrating that Ku
 
 ## Monitoring and Observability Integration
 
+### Validating Observability in a Distributed Environment
+
+In Exercise 1, you built an application with robust observability. Now that your application is running in a dynamic, distributed Kubernetes environment, it's crucial to confirm that all of that instrumentation is still working correctly. This section verifies that your application's metrics, logs, and health checks are accessible from outside the container, enabling seamless integration with monitoring systems.
+
 ### Step 10: Verify Prometheus Metrics Integration
 
 Confirm that your Prometheus metrics are accessible for monitoring system integration:
@@ -314,10 +375,14 @@ Confirm that your Prometheus metrics are accessible for monitoring system integr
 ```bash
 # Check metrics endpoint
 curl -s http://$EXTERNAL_IP/metrics | grep -E "(http_requests_total|business_operations)"
+```
 
+```bash
 # Verify pod-level metrics annotations
 kubectl get pods -l app=sre-demo-app -o jsonpath='{.items[0].metadata.annotations}'
+```
 
+```bash
 # Check service monitoring annotations
 kubectl get service sre-demo-headless -o jsonpath='{.metadata.annotations}'
 ```
@@ -333,10 +398,14 @@ Test structured logging integration with Kubernetes logging infrastructure:
 ```bash
 # View application logs
 kubectl logs -l app=sre-demo-app --tail=50
+```
 
+```bash
 # Follow logs in real-time
 kubectl logs -l app=sre-demo-app -f
+```
 
+```bash
 # Generate some traffic and observe logs
 for i in {1..5}; do
   curl -s http://$EXTERNAL_IP/ > /dev/null
@@ -353,6 +422,10 @@ The log correlation with Kubernetes metadata (pod names, namespaces) provides th
 
 ## Testing Autoscaling and Load Management
 
+### The Self-Healing, Self-Scaling System
+
+One of the most powerful features of a container orchestration platform is its ability to automatically manage reliability and performance without human intervention. This section demonstrates how Kubernetes reacts to changing conditions. You will test the application’s **horizontal autoscaling** and its ability to **self-heal** from failures, reinforcing why Kubernetes is an essential platform for building resilient, production-grade systems.
+
 ### Step 12: Verify Horizontal Pod Autoscaler Configuration
 
 Check that your application is configured for automatic scaling:
@@ -360,10 +433,14 @@ Check that your application is configured for automatic scaling:
 ```bash
 # Check HPA status
 kubectl get hpa
+```
 
+```bash
 # Get detailed HPA information
 kubectl describe hpa sre-demo-hpa
+```
 
+```bash
 # View current metrics used for scaling decisions
 kubectl get hpa sre-demo-hpa -o yaml
 ```
@@ -377,13 +454,19 @@ Generate load to test your application's scaling behavior:
 ```bash
 # Run a more intensive load test
 ./scripts/deploy.sh test
+```
 
+```bash
 # Monitor scaling during load test (in another terminal)
 watch kubectl get pods -l app=sre-demo-app
+```
 
+```bash
 # Check resource usage during load
 kubectl top pods -l app=sre-demo-app
+```
 
+```bash
 # View HPA events
 kubectl describe hpa sre-demo-hpa
 ```
@@ -399,10 +482,14 @@ Simulate application failures to verify Kubernetes recovery mechanisms:
 ```bash
 # Delete a pod to test automatic recovery
 kubectl delete pod $(kubectl get pods -l app=sre-demo-app -o jsonpath='{.items[0].metadata.name}')
+```
 
+```bash
 # Watch recovery process
 kubectl get pods -l app=sre-demo-app -w
+```
 
+```bash
 # Test service continuity during recovery
 for i in {1..10}; do
   curl -s http://$EXTERNAL_IP/health | grep status

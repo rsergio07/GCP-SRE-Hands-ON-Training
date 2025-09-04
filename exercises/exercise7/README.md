@@ -109,6 +109,10 @@ Your SRE platform from Exercises 1-6 provides excellent observability and deploy
 
 ## Implementing Security Hardening
 
+### Fortifying Your System with Defense-in-Depth
+
+Up to this point, you've focused on building a platform that is highly available, scalable, and observable. Now, you must secure it. This section focuses on implementing **security hardening** measures that protect your application and its data from malicious threats. The SRE approach to security is proactive: we build security into the platform and the CI/CD pipeline from the start, rather than applying it as an afterthought. You will implement network policies, secure container configurations, and proper secret management to create a robust security posture.
+
 ### Step 1: Deploy Security Policies
 
 Navigate to Exercise 7 and implement comprehensive security controls:
@@ -116,13 +120,19 @@ Navigate to Exercise 7 and implement comprehensive security controls:
 ```bash
 # Navigate to Exercise 7 directory
 cd exercises/exercise7
+```
 
+```bash
 # Review security policy configurations
 cat k8s/security-policies.yaml
+```
 
+```bash
 # Deploy security policies
 kubectl apply -f k8s/security-policies.yaml
+```
 
+```bash
 # Verify security policies are active
 kubectl get networkpolicies
 kubectl get podsecuritypolicy
@@ -137,10 +147,14 @@ Deploy the production-hardened container configuration:
 ```bash
 # Review hardened Dockerfile
 cat Dockerfile
+```
 
+```bash
 # Build hardened container image
 docker build -t sre-demo-app:production-hardened .
+```
 
+```bash
 # Scan for vulnerabilities
 trivy image sre-demo-app:production-hardened
 ```
@@ -154,10 +168,14 @@ Implement proper secret management and encryption:
 ```bash
 # Deploy secret management configuration
 kubectl apply -f k8s/secret-management.yaml
+```
 
+```bash
 # Verify secret encryption at rest
 kubectl get secrets -o yaml | grep -E "(data|stringData)"
+```
 
+```bash
 # Test secret rotation procedures
 ./scripts/rotate-secrets.sh test
 ```
@@ -168,6 +186,10 @@ Secret management includes encryption at rest, proper secret rotation, least-pri
 
 ## Cost Optimization Strategies
 
+### Balancing Reliability with Economic Efficiency
+
+A highly reliable and performant system is essential, but it is not free. A key responsibility of an SRE is to manage the operational costs of the platform, a discipline often referred to as **FinOps**. This section guides you through implementing cost optimization strategies that ensure your application is not only reliable and scalable but also resource-efficient. You will learn to right-size your resources, leverage intelligent autoscaling, and implement cost monitoring to maintain your performance targets without overspending.
+
 ### Step 4: Implement Resource Optimization
 
 Deploy cost optimization configurations:
@@ -175,10 +197,14 @@ Deploy cost optimization configurations:
 ```bash
 # Review cost optimization settings
 cat k8s/cost-optimization.yaml
+```
 
+```bash
 # Apply resource optimization policies
 kubectl apply -f k8s/cost-optimization.yaml
+```
 
+```bash
 # Monitor resource utilization
 kubectl top nodes
 kubectl top pods --all-namespaces
@@ -193,10 +219,14 @@ Implement intelligent autoscaling for cost efficiency:
 ```bash
 # Deploy advanced autoscaling configuration
 kubectl apply -f k8s/advanced-hpa.yaml
+```
 
+```bash
 # Configure cluster autoscaling
 kubectl apply -f k8s/cluster-autoscaler.yaml
+```
 
+```bash
 # Monitor autoscaling behavior
 kubectl get hpa
 kubectl describe nodes
@@ -211,10 +241,14 @@ Deploy cost monitoring and alerting:
 ```bash
 # Configure cost monitoring dashboards
 gcloud monitoring dashboards create --config-from-file=monitoring/cost-dashboard.json
+```
 
+```bash
 # Set up cost alerting policies
 gcloud alpha monitoring policies create --policy-from-file=monitoring/cost-alerts.yaml
+```
 
+```bash
 # Review cost optimization recommendations
 gcloud recommender recommendations list --project=$PROJECT_ID --recommender=google.compute.instance.MachineTypeRecommender
 ```
@@ -225,6 +259,10 @@ Cost monitoring provides real-time visibility into resource costs, budget alerts
 
 ## Disaster Recovery and Business Continuity
 
+### Preparing for the Worst-Case Scenario
+
+Even the most reliable systems can face catastrophic failures. An SRE must not only build for high availability but also prepare for scenarios like regional outages or major data corruption events. This section focuses on implementing a comprehensive **disaster recovery (DR)** and **business continuity** plan. You will establish automated backup procedures, configure multi-region deployments for geographic redundancy, and, most importantly, you will **test** these recovery processes to ensure your application can meet its Recovery Time Objective (**RTO**) and Recovery Point Objective (**RPO**) in a real-world disaster.
+
 ### Step 7: Implement Backup Procedures
 
 Configure automated backup and recovery:
@@ -232,10 +270,14 @@ Configure automated backup and recovery:
 ```bash
 # Review backup configuration
 cat k8s/backup-config.yaml
+```
 
+```bash
 # Deploy backup infrastructure
 kubectl apply -f k8s/backup-config.yaml
+```
 
+```bash
 # Test backup procedures
 ./scripts/backup-test.sh validate
 ```
@@ -249,10 +291,14 @@ Configure geographic redundancy:
 ```bash
 # Review multi-region configuration
 cat k8s/multi-region-setup.yaml
+```
 
+```bash
 # Deploy to secondary region
 ./scripts/setup-production.sh deploy-secondary
+```
 
+```bash
 # Test failover procedures
 ./scripts/disaster-recovery-test.sh
 ```
@@ -267,10 +313,14 @@ Test disaster recovery capabilities:
 # Run comprehensive DR test
 chmod +x scripts/production-tests.sh
 ./scripts/production-tests.sh disaster-recovery
+```
 
+```bash
 # Validate backup integrity
 ./scripts/production-tests.sh backup-validation
+```
 
+```bash
 # Test data recovery procedures
 ./scripts/production-tests.sh recovery-procedures
 ```
@@ -288,10 +338,14 @@ Deploy performance-optimized configuration:
 ```bash
 # Review performance optimization
 cat app/main.py | grep -A10 "performance"
+```
 
+```bash
 # Apply performance tuning
 kubectl apply -f k8s/production-deployment.yaml
+```
 
+```bash
 # Load test optimized application
 ./scripts/production-tests.sh performance
 ```
@@ -305,10 +359,14 @@ Enhance monitoring for production scale:
 ```bash
 # Deploy production monitoring configuration
 kubectl apply -f monitoring/production-alerts.yaml
+```
 
+```bash
 # Configure SLO monitoring for production
 kubectl apply -f monitoring/production-slos.yaml
+```
 
+```bash
 # Validate monitoring coverage
 ./scripts/production-tests.sh monitoring-coverage
 ```
@@ -326,10 +384,14 @@ Deploy compliance and governance controls:
 ```bash
 # Review governance policies
 cat k8s/governance-policies.yaml
+```
 
+```bash
 # Apply governance controls
 kubectl apply -f k8s/governance-policies.yaml
+```
 
+```bash
 # Validate compliance status
 ./scripts/production-tests.sh compliance-check
 ```
@@ -343,10 +405,14 @@ Configure production operational procedures:
 ```bash
 # Deploy operational automation
 kubectl apply -f k8s/operational-procedures.yaml
+```
 
+```bash
 # Test incident response procedures
 ./scripts/production-tests.sh incident-response
+```
 
+```bash
 # Validate operational runbooks
 ./scripts/production-tests.sh runbook-validation
 ```

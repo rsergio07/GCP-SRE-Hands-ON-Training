@@ -109,6 +109,10 @@ Your monitoring infrastructure from Exercise 4 collects comprehensive metrics, b
 
 ## Defining SLIs and SLOs
 
+### The Foundation of Actionable Alerting
+
+An alert is only as good as the problem it signals. Before we create any alert policies, we must first define what our service's reliability means from a user's perspective. This section guides you through defining **Service Level Indicators (SLIs)** that measure user experience and **Service Level Objectives (SLOs)** that set a clear target for reliability. This approach ensures that every alert we create is tied directly to a potential or actual user-facing issue, preventing alert fatigue and focusing our efforts where they matter most.
+
 ### Step 1: Analyze Your Application's User Experience
 
 Examine your application from the user's perspective to identify key reliability indicators:
@@ -116,15 +120,29 @@ Examine your application from the user's perspective to identify key reliability
 ```bash
 # Navigate to Exercise 5 directory
 cd exercises/exercise5
+```
 
+```bash
 # Review your application's user-facing functionality
 export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+```
 
-# Test core user journeys
+```bash
+# Test root endpoint (status code + latency)
 curl -w "%{http_code} %{time_total}s\n" http://$EXTERNAL_IP/
-curl -w "%{http_code} %{time_total}s\n" http://$EXTERNAL_IP/stores
-curl -w "%{http_code} %{time_total}s\n" http://$EXTERNAL_IP/stores/1
+```
 
+```bash
+# Test stores endpoint
+curl -w "%{http_code} %{time_total}s\n" http://$EXTERNAL_IP/stores
+```
+
+```bash
+# Test individual store endpoint
+curl -w "%{http_code} %{time_total}s\n" http://$EXTERNAL_IP/stores/1
+```
+
+```bash
 # Examine current metrics to understand baseline performance
 export PROMETHEUS_IP=$(kubectl get service prometheus-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "Review metrics at: http://$PROMETHEUS_IP:9090"
@@ -139,7 +157,9 @@ Review the SLI definitions provided for your application:
 ```bash
 # Examine the SLI configuration
 cat sli-definitions.yaml
+```
 
+```bash
 # Review SLO targets and rationale
 cat slo-config.yaml
 ```
@@ -153,10 +173,14 @@ Deploy the SLO monitoring configuration to Google Cloud:
 ```bash
 # Create SLOs in Google Cloud Monitoring
 gcloud monitoring slos create --config-from-file=slo-config.yaml
+```
 
+```bash
 # Verify SLO creation
 gcloud monitoring slos list
+```
 
+```bash
 # Check SLO status
 gcloud monitoring slos describe projects/$PROJECT_ID/services/sre-demo-service/serviceLevelObjectives/availability-slo
 ```
@@ -167,6 +191,10 @@ SLO monitoring provides baseline measurement and error budget tracking that info
 
 ## Implementing Alert Policies
 
+### Creating the Signals for Response
+
+You have now defined your service's reliability targets. This section is where you implement the "tripwire" that tells you when those targets are at risk. You will deploy and configure alert policies in both **Prometheus** for fast, metrics-based alerting and **Google Cloud Monitoring** for advanced, SLO-based alerting. This dual approach gives you both the speed needed for immediate response and the intelligence required to alert on the depletion of your error budget.
+
 ### Step 4: Deploy Prometheus Alerting Rules
 
 Configure Prometheus alerting rules for immediate problem detection:
@@ -174,10 +202,14 @@ Configure Prometheus alerting rules for immediate problem detection:
 ```bash
 # Examine the alerting rules
 cat k8s/alerting/prometheus-rules.yaml
+```
 
+```bash
 # Deploy alerting rules to your cluster
 kubectl apply -f k8s/alerting/prometheus-rules.yaml
+```
 
+```bash
 # Verify rules are loaded
 kubectl logs -l app=prometheus | grep "Loading configuration file"
 ```
@@ -191,14 +223,20 @@ Deploy Alertmanager to handle alert routing and notification:
 ```bash
 # Review Alertmanager configuration
 cat k8s/alerting/alertmanager-config.yaml
+```
 
+```bash
 # Deploy Alertmanager
 kubectl apply -f k8s/alerting/alertmanager-deployment.yaml
 kubectl apply -f k8s/alerting/alertmanager-config.yaml
+```
 
+```bash
 # Wait for Alertmanager to be ready
 kubectl wait --for=condition=available --timeout=300s deployment/alertmanager
+```
 
+```bash
 # Check Alertmanager status
 kubectl get service alertmanager-service
 ```
@@ -214,10 +252,14 @@ Implement Google Cloud Monitoring alert policies for SLO-based alerting:
 gcloud alpha monitoring policies create --policy-from-file=alerting/availability-alert-policy.yaml
 gcloud alpha monitoring policies create --policy-from-file=alerting/latency-alert-policy.yaml
 gcloud alpha monitoring policies create --policy-from-file=alerting/error-budget-alert-policy.yaml
+```
 
+```bash
 # List created policies
 gcloud alpha monitoring policies list
+```
 
+```bash
 # Test policy configuration
 gcloud alpha monitoring policies describe projects/$PROJECT_ID/alertPolicies/ALERT_POLICY_ID
 ```
@@ -228,6 +270,10 @@ Google Cloud alert policies provide integration with Google Cloud notification c
 
 ## Building Incident Response Workflows
 
+### Connecting the Alert to the Human
+
+An alert that isn't seen or acted upon is useless. The most robust alerting system is only part of the solution; the other part is the human process for handling incidents. This section focuses on building the workflows that connect your automated alerts to your on-call team. You will configure notification channels and review incident response playbooks to ensure that when an alert triggers, the right person is notified with the right context, enabling a fast and effective resolution.
+
 ### Step 7: Establish Notification Channels
 
 Configure notification channels for different alert severities:
@@ -235,11 +281,15 @@ Configure notification channels for different alert severities:
 ```bash
 # Create notification channels
 cat alerting/notification-channels.yaml
+```
 
+```bash
 # Deploy notification channels
 gcloud alpha monitoring channels create --channel-from-file=alerting/email-notification.yaml
 gcloud alpha monitoring channels create --channel-from-file=alerting/slack-notification.yaml
+```
 
+```bash
 # Verify channels are created
 gcloud alpha monitoring channels list
 ```
@@ -253,7 +303,9 @@ Use the provided testing script to verify your alerting infrastructure:
 ```bash
 # Make the alert testing script executable
 chmod +x scripts/test-alerts.sh
+```
 
+```bash
 # Run comprehensive alert testing
 ./scripts/test-alerts.sh
 
@@ -274,7 +326,9 @@ Review the incident response procedures:
 cat playbooks/availability-incident.md
 cat playbooks/performance-incident.md
 cat playbooks/error-budget-depletion.md
+```
 
+```bash
 # Review escalation procedures
 cat playbooks/escalation-matrix.md
 ```
@@ -284,6 +338,10 @@ Incident response playbooks provide structured procedures that reduce Mean Time 
 ---
 
 ## Testing Alert Reliability
+
+### Proving Your System Works
+
+You have defined your SLIs, built your alerts, and established your response workflows. But how do you know if it all works as intended? The final and most critical step is to test the reliability of your entire alerting system. This section guides you through controlled chaos testing and incident simulation to validate that your alerts trigger correctly, your notifications are delivered, and your response procedures are effective. This proactive validation builds confidence and prepares your team for real-world incidents.
 
 ### Step 10: Chaos Testing for Alert Validation
 
@@ -315,10 +373,14 @@ Test incident response procedures during controlled scenarios:
 ```bash
 # Use the incident simulation script
 chmod +x scripts/incident-simulation.sh
+```
 
+```bash
 # Run incident simulation
 ./scripts/incident-simulation.sh
+```
 
+```bash
 # Monitor alert generation and response
 echo "Check these locations during simulation:"
 echo "Prometheus alerts: http://$PROMETHEUS_IP:9090/alerts"
@@ -339,10 +401,14 @@ Configure advanced SLO alerting that balances sensitivity with noise reduction:
 ```bash
 # Review multi-burn-rate alert configuration
 cat alerting/advanced-slo-alerts.yaml
+```
 
+```bash
 # Deploy advanced alerting rules
 kubectl apply -f alerting/advanced-slo-alerts.yaml
+```
 
+```bash
 # Verify advanced rules are active
 kubectl exec deployment/prometheus -- promtool query instant 'ALERTS{alertname=~".*SLO.*"}'
 ```
@@ -356,10 +422,14 @@ Implement error budget policies that guide development and operational decisions
 ```bash
 # Review error budget policies
 cat policies/error-budget-policy.yaml
+```
 
+```bash
 # Create error budget dashboards
 gcloud monitoring dashboards create --config-from-file=dashboards/error-budget-dashboard.json
+```
 
+```bash
 # Check error budget status
 echo "Monitor error budgets at:"
 echo "https://console.cloud.google.com/monitoring/overview?project=$PROJECT_ID"
@@ -374,10 +444,14 @@ Implement metrics to track and improve alert quality:
 ```bash
 # Deploy alert quality monitoring
 cat monitoring/alert-quality-metrics.yaml
+```
 
+```bash
 # Create alert quality dashboard
 gcloud monitoring dashboards create --config-from-file=dashboards/alert-quality-dashboard.json
+```
 
+```bash
 # Review alert effectiveness queries
 cat monitoring/alert-quality-queries.md
 ```
