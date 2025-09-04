@@ -797,10 +797,12 @@ gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-d
 Listing items under project gcp-sre-lab, location us-central1, repository sre-demo-app.
 
 IMAGE                                                             DIGEST                                                                   CREATE_TIME          UPDATE_TIME          SIZE
-us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app  sha256:24d20f39485a879ecebd3cdb408a2f9652135c36007baedef4b342c9ec70ae8d  2025-09-03T20:54:57  2025-09-03T20:54:57  53784367
+us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app  sha256:550afc062067dd896c32b0d397cb853ce934f69e95c3dcd1f1450c3c5cd524cb  2025-09-04T15:24:42  2025-09-04T15:24:42  53784492
+us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app  sha256:8a3999fccfe18634686aee1cee864bc4305e3d92387c8af80b29b3d4835db476  2025-09-04T15:24:42  2025-09-04T15:24:43  None
+us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app  sha256:ac288125f04e665449b428e71a6b4a37ee317d39f49f6b2f79ffbf60ac4e079b  2025-09-04T15:24:42  2025-09-04T15:24:42  24355
 ```
 
-The transformation from an empty registry to a populated one with tagged images confirms that your GitHub Actions workflow successfully built, scanned, and uploaded your container image.
+**Note:** The build process creates multiple container images. The first two images are platform-specific builds (e.g., for `amd64` and `arm64` architectures), and the third image is a **manifest list** that references them. This is a best practice for building universal container images that can run on a wider variety of hardware. The transformation from an empty registry to a populated one with tagged images confirms that your GitHub Actions workflow successfully built, scanned, and uploaded your container image.
 
 ---
 
@@ -817,7 +819,43 @@ Seeing the images and their tags in the UI confirms that your automated CI/CD pi
 
 ---
 
-### Step 18: Clean Up Feature Branch
+## Step 18: Clean Up Your Container Images
+
+To avoid incurring storage costs, it's a best practice to delete the container images you no longer need. The images you pushed to Artifact Registry in this exercise are no longer required for the course.
+
+Run the following command to delete all images in your repository. This process can take a few minutes.
+
+```bash
+# Get the digest of the parent manifest list and delete it first
+PARENT_DIGEST=$(gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app \
+  --format="value(DIGEST)" | grep -v 'None' | tail -n 1)
+
+gcloud artifacts docker images delete us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app@${PARENT_DIGEST} --delete-tags --quiet
+
+# Then, run a loop to delete all remaining child images
+gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app \
+  --format="value(IMAGE,DIGEST)" | while read -r image digest; do
+    gcloud artifacts docker images delete "${image}@${digest}" --delete-tags --quiet
+done
+```
+
+Once the command completes, you can verify that the registry is empty:
+
+```bash
+gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app
+```
+
+**Expected Output:**
+
+```
+Listing items under project gcp-sre-lab, location us-central1, repository sre-demo-app.
+
+Listed 0 items.
+```
+
+---
+
+### Step 19: Clean Up Feature Branch
 
 After successful pipeline testing, clean up the feature branch to maintain repository organization:
 
