@@ -169,6 +169,10 @@ The workflow implements comprehensive automation including application testing w
 
 ## Building Your First Container Image
 
+### Connecting Theory to Practice
+
+Before we build and automate our container image in the cloud, it's essential to first validate our process locally. The following steps will demonstrate how your `Dockerfile` and application code work together to create a single, portable container artifact. This manual verification step is a crucial precursor to automation, ensuring that a process works correctly before we attempt to build a robust, production-ready CI/CD pipeline around it.
+
 ### Step 1: Understand the Multi-Stage Dockerfile
 
 The provided Dockerfile implements production-grade containerization using a two-stage build process that separates build dependencies from runtime environment.
@@ -645,7 +649,7 @@ Together, these practices align with SRE values of **reliability, security, and 
 
 Container images in Google Container Registry follow specific naming conventions that support both development workflows and production traceability.
 
-The workflow automatically generates multiple tags for each successful build: Git commit SHA for precise version tracking, branch name for development identification, and `latest` tag for convenient development access.
+This multi-tag approach ensures that every build produces uniquely identifiable container images while supporting flexible deployment strategies for different environments. This strategy aligns with SRE principles of **immutability** and **traceability**, as every container image is a unique, auditable artifact that can be deployed to any environment with confidence.
 
 This multi-tag approach ensures that every build produces uniquely identifiable container images while supporting flexible deployment strategies for different environments.
 
@@ -660,6 +664,10 @@ Container images stored in the registry are automatically scanned for security v
 ## Testing the Complete Pipeline
 
 ### Step 12: Verify Initial Registry State
+
+### Verifying End-to-End Automation
+
+After implementing all the necessary configurations, the final step is to verify that the entire pipeline works as expected. This section guides you through the process of triggering the automated workflow and confirming that it successfully builds, scans, and pushes a container image to your cloud registry. This end-to-end verification confirms that your new automated delivery system is fully operational.
 
 Before triggering the automated build pipeline, confirm that your Artifact Registry repository exists and is empty.
 
