@@ -85,6 +85,10 @@ Note: No local software installation is required. Everything runs in the cloud.
 
 In your Codespace, you'll find a complete Flask application with SRE best practices already implemented. Look at the `exercises/exercise1/` folder in the VS Code file explorer to see the application structure.
 
+### Why Start Here?
+
+Before we run any commands, it's crucial to understand the foundation of our application. The SRE mindset emphasizes that an application's design is key to its reliability. By exploring the code structure and key files first, you'll gain an appreciation for how observability (metrics, logging, health checks) is baked into the application from the very beginning. This is a core practice of building production-ready systems.
+
 ### Application Architecture Overview
 
 The exercise contains a complete Flask application structured for production use:
@@ -118,6 +122,10 @@ The **requirements.txt** file specifies all Python dependencies including Flask 
 ---
 
 ## Setting Up Your Cloud Development Environment
+
+### Preparing Your Toolkit
+
+The cloud development environment provides a clean slate, but to interact with cloud resources and manage future deployments, you need a set of essential tools. This section guides you through installing the **Google Cloud CLI (`gcloud`)** and the **Kubernetes CLI (`kubectl`)**. These tools are your command-line interface to the cloud, enabling you to manage infrastructure and deploy your application in later exercises.
 
 ### Step 1: Launch GitHub Codespaces
 
@@ -219,6 +227,10 @@ Notice how the application is designed to work with environment variables. This 
 
 ### Step 6: Start the Application
 
+### From Code to Action
+
+You have now examined the application's structure and set up your environment. The next logical step is to bring the application to life. In the following steps, you will run the Flask application and use command-line tools like `curl` to interact with its various endpoints. This will give you your first hands-on experience with a running, observable application.
+
 ```bash
 # Run the Flask application
 python -m app.main
@@ -288,6 +300,10 @@ If the popup does not appear, open the **Ports** tab manually, look for port `80
 ---
 
 ## Understanding Observability in Action
+
+### Seeing Observability in the Real World
+
+In the theory section, you learned about the core SRE observability principles: metrics, logging, and health checks. Now, you will get a chance to see them in action. The following steps demonstrate how the pre-built instrumentation in the application captures critical data and signals that SRE teams rely on to monitor system health and troubleshoot issues in production.
 
 ### Step 9: Explore Application Metrics
 
