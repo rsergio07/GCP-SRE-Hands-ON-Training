@@ -113,29 +113,41 @@ Before you can deploy your application to Kubernetes, you need to provision the 
 
 ### Step 1: Prepare Your Development Environment
 
-Navigate to Exercise 3 and examine the provided Kubernetes configurations:
+Navigate to the **Exercise 3** directory. This folder contains all the manifests and scripts needed for a production-ready deployment:
 
 ```bash
-# Navigate to Exercise 3 directory
 cd exercises/exercise3
 ```
 
-```bash
-# Examine the directory structure
-ls -la
-```
+Inside you will find:
+
+* **`README.md`** → documentation for this exercise.
+* **`k8s/`** → Kubernetes manifests for Deployment, Service, ConfigMap, and HPA.
+* **`scripts/`** → automation scripts for setup and deployment.
+
+Let’s inspect these files to understand their role in reliability and scalability:
 
 ```bash
-# Look at the Kubernetes manifests
+# Explore the Kubernetes manifests
 ls -la k8s/
 ```
 
+#### What to look for:
+
+* `configmap.yaml`: separates configuration from code, enabling updates without rebuilding the image.
+* `deployment.yaml`: defines replicas, resource requests/limits, health probes, and security context.
+* `hpa.yaml`: sets up autoscaling rules based on CPU and memory utilization.
+* `service.yaml`: exposes the app externally and sets up a headless service for monitoring.
+
 ```bash
-# Check the setup scripts
+# Explore the setup and deployment automation scripts
 ls -la scripts/
 ```
 
-Exercise 3 includes production-ready Kubernetes manifests for deployment, service configuration, horizontal pod autoscaling, and configuration management, plus automated scripts for cluster creation and application deployment.
+#### What to look for:
+
+* `setup.sh`: provisions the GKE Autopilot cluster, enables APIs, updates manifests with your project ID.
+* `deploy.sh`: applies manifests in order, waits for pods and services to be ready, tests endpoints, and runs a basic load test.
 
 ### Step 2: Configure Your Project Environment
 
@@ -154,33 +166,50 @@ gcloud config get-value project
 
 ```bash
 # Verify your container images exist from Exercise 2
-gcloud container images list --repository=gcr.io/$PROJECT_ID
+gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app
 ```
 
 ```bash
 # Check for the sre-demo-app image specifically
-gcloud container images list-tags gcr.io/$PROJECT_ID/sre-demo-app --limit=5
+gcloud artifacts docker tags list us-central1-docker.pkg.dev/$PROJECT_ID/sre-demo-app
 ```
 
 Confirm that you have container images available from Exercise 2. If no images are found, you'll need to complete Exercise 2's CI/CD pipeline first to build and push your container images.
 
-### Step 3: Run the Automated Setup Script
+### Installing the GKE Authentication Plugin
 
-Use the provided setup script to create your GKE cluster and configure the environment:
+The `kubectl` command requires a credential plugin to authenticate with your Google Kubernetes Engine (GKE) cluster. This plugin is not always installed by default with the `gcloud` CLI.
+
+If you encounter an error like `exec: executable gke-gcloud-auth-plugin not found`, you need to install this component. Run the following command in your terminal to resolve the issue:
+
+```bash
+gcloud components install gke-gcloud-auth-plugin
+```
+
+After the installation completes, you can proceed with running the `setup.sh` and `deploy.sh` scripts. This plugin ensures `kubectl` can securely connect to and manage your cluster.
+
+### Step 3: Run the Automated Setup Script and Monitor in the Console
+
+Use the provided setup script to create your GKE cluster and configure the environment.
 
 ```bash
 # Make the setup script executable
 chmod +x scripts/setup.sh
-```
 
-```bash
 # Run the setup script (this will take 5-10 minutes)
 ./scripts/setup.sh
 ```
 
-The setup script automates Google Cloud API activation, GKE Autopilot cluster creation, kubectl configuration, and Kubernetes manifest updates with your project ID. This process typically takes 5-10 minutes for cluster provisioning.
+**While the script is running, open the Google Cloud Console in your browser.**
 
-Monitor the script output for any errors. The script will wait for cluster creation to complete before configuring kubectl access.
+Instead of waiting for the terminal to finish, you can actively watch the cluster being provisioned and explore the console. This is a common practice for SREs to monitor large operations.
+
+1.  Navigate to the **Kubernetes Engine** section in the GCP Console.
+2.  Click on **Clusters** in the left-hand navigation menu.
+3.  You will see a cluster named `sre-demo-cluster` in a **"Provisioning"** status.
+4.  Click on the cluster name to view its details, including the creation events and the progress of the underlying infrastructure components.
+
+This process gives you a direct look at the self-healing and automation capabilities of GKE, even before the deployment starts.
 
 ### Understanding GKE Autopilot Benefits
 
