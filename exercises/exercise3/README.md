@@ -501,6 +501,40 @@ Kubernetes should immediately create a new pod to replace the deleted one, maint
 
 This demonstrates the self-healing capabilities that make Kubernetes deployments more reliable than individual container deployments.
 
+### Step 15: Clean Up Your Container Images
+
+To avoid incurring storage costs, it's a best practice to delete the container images you no longer need. The images you pushed to Artifact Registry in this exercise are no longer required for the course.
+
+Run the following command to delete all images in your repository. This process can take a few minutes.
+
+```bash
+# Get the digest of the parent manifest list and delete it first
+PARENT_DIGEST=$(gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app \
+  --format="value(DIGEST)" | grep -v 'None' | tail -n 1)
+
+gcloud artifacts docker images delete us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app@${PARENT_DIGEST} --delete-tags --quiet
+
+# Then, run a loop to delete all remaining child images
+gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app \
+  --format="value(IMAGE,DIGEST)" | while read -r image digest; do
+    gcloud artifacts docker images delete "${image}@${digest}" --delete-tags --quiet
+done
+```
+
+Once the command completes, you can verify that the registry is empty:
+
+```bash
+gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app
+```
+
+**Expected Output:**
+
+```
+Listing items under project gcp-sre-lab, location us-central1, repository sre-demo-app.
+
+Listed 0 items.
+```
+
 ---
 
 ## Final Objective
