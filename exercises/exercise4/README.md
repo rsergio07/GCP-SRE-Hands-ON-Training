@@ -5,23 +5,23 @@
 - [Learning Objectives](#learning-objectives)
 - [Prerequisites](#prerequisites)
 - [Theory Foundation](#theory-foundation)
-- [Understanding Observability in Kubernetes](#understanding-observability-in-kubernetes)
-- [Configuring Application Metrics for Production](#configuring-application-metrics-for-production)
-- [Deploying Prometheus to GKE](#deploying-prometheus-to-gke)
-- [Integrating with Google Cloud Monitoring](#integrating-with-google-cloud-monitoring)
-- [Creating Custom Dashboards and Visualizations](#creating-custom-dashboards-and-visualizations)
-- [Implementing SRE Monitoring Best Practices](#implementing-sre-monitoring-best-practices)
+- [Understanding Your Application's Current Metrics](#understanding-your-applications-current-metrics)
+- [Deploying Prometheus for Production Monitoring](#deploying-prometheus-for-production-monitoring)
+- [Configuring Google Cloud Monitoring Integration](#configuring-google-cloud-monitoring-integration)
+- [Real-Time Monitoring with Multiple Terminals](#real-time-monitoring-with-multiple-terminals)
+- [Understanding Prometheus Service Discovery Issues](#understanding-prometheus-service-discovery-issues)
+- [Creating and Testing SRE Queries](#creating-and-testing-sre-queries)
 - [Final Objective](#final-objective)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting Common Issues](#troubleshooting-common-issues)
 - [Next Steps](#next-steps)
 
 ---
 
 ## Introduction
 
-In this exercise, you will implement a comprehensive monitoring stack for your Kubernetes-deployed SRE application. You'll configure Prometheus to collect metrics from your application, integrate with Google Cloud Monitoring for unified observability, and create custom dashboards that provide actionable insights for SRE decision-making.
+In this exercise, you will implement a comprehensive monitoring stack for your Kubernetes-deployed SRE application. You'll learn how to deploy Prometheus, handle real-world configuration challenges, and create monitoring that provides actionable insights for SRE decision-making.
 
-This exercise demonstrates how modern SRE teams build monitoring systems that provide visibility into both application performance and business metrics, enabling proactive incident response and data-driven optimization decisions.
+This exercise demonstrates the complexities of production monitoring systems and teaches you to diagnose and resolve common observability challenges that SRE teams encounter daily.
 
 ---
 
@@ -29,12 +29,12 @@ This exercise demonstrates how modern SRE teams build monitoring systems that pr
 
 By completing this exercise, you will understand:
 
-- **Application Metrics Configuration**: How to optimize Prometheus metrics for production monitoring
-- **Prometheus Deployment**: How to deploy and configure Prometheus in Kubernetes environments
-- **Google Cloud Monitoring Integration**: How to leverage managed monitoring services for comprehensive observability
-- **Custom Dashboard Creation**: How to build dashboards that provide actionable SRE insights
-- **Monitoring Strategy**: How to implement monitoring that supports SLI/SLO frameworks
-- **Alert Foundation**: How to prepare monitoring data for intelligent alerting systems
+- **Production Monitoring Deployment**: How to deploy Prometheus in Kubernetes with proper service discovery
+- **Troubleshooting Service Discovery**: How to diagnose and fix common Prometheus configuration issues
+- **Google Cloud Integration**: How to work with Google Cloud Monitoring APIs and handle permission limitations
+- **Real-Time Observation**: How to generate traffic and observe metrics propagation in real-time
+- **SRE Query Development**: How to create and test queries that support SLI/SLO frameworks
+- **Error Handling in Monitoring**: How to handle expected failures and configuration limitations
 
 ---
 
@@ -43,93 +43,66 @@ By completing this exercise, you will understand:
 Before starting this exercise, ensure you have completed:
 
 - Exercise 1: Cloud Development Environment & SRE Application
-- Exercise 2: Container Builds & GitHub Actions
+- Exercise 2: Container Builds & GitHub Actions  
 - Exercise 3: Kubernetes Deployment
 - Successfully deployed SRE application running on GKE
 - Understanding of your application's existing Prometheus metrics endpoints
 
-Note: This exercise builds directly on the observability features implemented in previous exercises.
+**Verify your prerequisites:**
+
+```bash
+# Check that your SRE application is running
+kubectl get deployment sre-demo-app
+kubectl get service sre-demo-service
+```
+
+**Expected output:**
+```
+NAME           READY   UP-TO-DATE   AVAILABLE   AGE
+sre-demo-app   2/2     2            2           1h
+
+NAME               TYPE           CLUSTER-IP      EXTERNAL-IP       PORT(S)        AGE
+sre-demo-service   LoadBalancer   34.118.234.68   104.154.201.227   80:30123/TCP   1h
+```
 
 ---
 
 ## Theory Foundation
 
-### Observability vs. Monitoring
+### Observability in Production Systems
 
 **Essential Watching** (15 minutes):
-- [Observability vs Monitoring Explained](https://www.youtube.com/watch?v=CAQ_a2-9UOI) by Honeycomb - Understanding the fundamental differences
-- [The Three Pillars of Observability](https://www.youtube.com/watch?v=juP9VApKy_I) by Grafana - Metrics, logs, and traces
+- [Observability vs Monitoring Explained](https://www.youtube.com/watch?v=CAQ_a2-9UOI) by Honeycomb
+- [The Four Golden Signals](https://www.youtube.com/watch?v=tEylFyxbDLE) by Google SRE
 
 **Reference Documentation**:
-- [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/) - Foundational monitoring principles
-- [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/) - Metric naming and design patterns
+- [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
+- [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/)
 
-### Prometheus and Cloud Monitoring
+### Key Concepts for This Exercise
 
-**Essential Watching** (20 minutes):
-- [Prometheus in 100 Seconds](https://www.youtube.com/watch?v=h4Sl21AKiDg) by Fireship - Quick Prometheus overview
-- [Google Cloud Monitoring Overview](https://www.youtube.com/watch?v=8UWChBiHRuY) by Google Cloud Tech - Managed monitoring capabilities
+**Service Discovery Challenges**: In real production environments, Prometheus service discovery requires careful configuration of RBAC permissions, proper pod annotations, and network connectivity. You'll experience and resolve these challenges.
 
-**Reference Documentation**:
-- [Prometheus Operator Documentation](https://prometheus-operator.dev/docs/prologue/introduction/) - Kubernetes-native Prometheus deployment
-- [Google Cloud Monitoring](https://cloud.google.com/monitoring/docs) - Complete managed monitoring platform
+**Metric Propagation Delays**: Understanding why metrics don't appear immediately and how to verify the monitoring pipeline is critical for SRE work. You'll learn to distinguish between configuration issues and normal delays.
 
-### Key Concepts You'll Learn
-
-**Application Metrics Strategy** focuses on exposing business-relevant metrics that directly correlate with user experience and system reliability. Your Flask application already implements this through request counters, duration histograms, and business operation metrics.
-
-**Prometheus Architecture** in Kubernetes environments uses service discovery to automatically find and scrape metrics from pods and services. This eliminates manual configuration while ensuring comprehensive metric collection across your entire application ecosystem.
-
-**Cloud Monitoring Integration** provides unified visibility by combining Prometheus application metrics with Google Cloud infrastructure metrics, creating a single pane of glass for both application and platform observability.
+**Integration Limitations**: Not all monitoring features work in every environment. You'll learn to work with permission constraints and find alternative approaches when ideal solutions aren't available.
 
 ---
 
-## Understanding Observability in Kubernetes
+## Understanding Your Application's Current Metrics
 
-Your SRE application has been exposing Prometheus metrics since Exercise 1, but running in Kubernetes provides additional opportunities for comprehensive observability that spans both application performance and infrastructure health.
+### Step 1: Navigate to Exercise Environment
 
-### Current Monitoring Capabilities
-
-Your deployed application already provides:
-- **HTTP request metrics** (count, duration, status codes)
-- **Business operation metrics** (store operations, success/failure rates)
-- **Application health metrics** (connection counts, readiness status)
-- **Infrastructure integration** through Kubernetes annotations for metric discovery
-
-### Enhanced Monitoring Requirements
-
-**Kubernetes-Native Observability** requires monitoring that understands pod lifecycles, service discovery, and resource utilization patterns. Your monitoring stack must automatically adapt as pods scale up and down.
-
-**Multi-Layer Visibility** combines application metrics with Kubernetes infrastructure metrics (CPU, memory, network) and Google Cloud platform metrics (load balancer, persistent disk, network egress) for comprehensive system understanding.
-
-**SRE-Focused Dashboards** translate raw metrics into business-relevant insights that support SLI measurement, SLO tracking, and informed incident response decisions.
-
----
-
-## Configuring Application Metrics for Production
-
-### Preparing the Data Layer
-
-Before you can build a robust monitoring system, you must first ensure that the data you intend to monitor is correctly exposed and formatted. This section focuses on verifying that the SRE-instrumented application you deployed in the previous exercises is properly exposing its Prometheus metrics. This step is critical because it confirms the foundation of our observability stack is solid before we proceed with data collection.
-
-## Step 1: Verify Current Metric Exposure
-
-This step ensures that your SRE application is properly exposing Prometheus metrics in the Kubernetes environment. This verification is critical because it confirms the foundation of your observability stack is solid before you proceed with data collection infrastructure.
-
-### Navigate to Exercise 4 Environment
-
-Set up your working directory for the monitoring exercise:
+Set up your working directory and verify your application's current state:
 
 ```bash
 # Navigate to Exercise 4 directory
 cd exercises/exercise4
 ```
 
-**Why this matters:** Exercise 4 contains all the monitoring configurations, dashboard definitions, and automation scripts needed to build your comprehensive observability stack.
+### Step 2: Examine Your Application's Rich Metrics
 
-### Verify Application Accessibility
-
-Confirm your SRE application is accessible and ready for metrics collection:
+Your SRE application has been accumulating valuable metric data since deployment. Let's examine what's available:
 
 ```bash
 # Get your application's external IP
@@ -142,56 +115,42 @@ echo "Application URL: http://$EXTERNAL_IP"
 Application URL: http://104.154.201.227
 ```
 
-**What this tells you:** Your application has a stable external IP address from Exercise 3. This LoadBalancer service provides the consistent endpoint needed for both user traffic and monitoring system access.
-
-### Examine Raw Metrics Output
-
-Inspect the current metrics your application is exposing:
+**Examine the metrics your application is currently exposing:**
 
 ```bash
-# Examine current metrics endpoint
+# Look at current metrics endpoint
 curl -s http://$EXTERNAL_IP/metrics | head -20
 ```
 
-**Expected output:**
+**Expected output (with rich existing data):**
 ```
 # HELP http_requests_total Total number of HTTP requests
 # TYPE http_requests_total counter
-http_requests_total{endpoint="ready_check",method="GET",status="200"} 512.0
-http_requests_total{endpoint="index",method="GET",status="200"} 2.0
+http_requests_total{endpoint="ready_check",method="GET",status="200"} 1554.0
+http_requests_total{endpoint="index",method="GET",status="200"} 66.0
+http_requests_total{endpoint="unknown",method="GET",status="404"} 48.0
+http_requests_total{endpoint="get_stores",method="GET",status="200"} 171.0
+http_requests_total{endpoint="metrics",method="GET",status="200"} 172.0
 # HELP http_requests_created Total number of HTTP requests
 # TYPE http_requests_created gauge
-http_requests_created{endpoint="ready_check",method="GET",status="200"} 1.7571767323129544e+09
-http_requests_created{endpoint="index",method="GET",status="200"} 1.7571767542628462e+09
-# HELP http_request_duration_seconds HTTP request duration in seconds
-# TYPE http_request_duration_seconds histogram
-http_request_duration_seconds_bucket{endpoint="ready_check",le="0.005",method="GET"} 512.0
-http_request_duration_seconds_bucket{endpoint="ready_check",le="0.01",method="GET"} 512.0
-http_request_duration_seconds_bucket{endpoint="ready_check",le="0.025",method="GET"} 512.0
-http_request_duration_seconds_bucket{endpoint="ready_check",le="0.05",method="GET"} 512.0
-http_request_duration_seconds_bucket{endpoint="ready_check",le="0.075",method="GET"} 512.0
-http_request_duration_seconds_bucket{endpoint="ready_check",le="0.1",method="GET"} 512.0
-http_request_duration_seconds_bucket{endpoint="ready_check",le="0.25",method="GET"} 512.0
-http_request_duration_seconds_bucket{endpoint="ready_check",le="0.5",method="GET"} 512.0
-http_request_duration_seconds_bucket{endpoint="ready_check",le="0.75",method="GET"} 512.0
-http_request_duration_seconds_bucket{endpoint="ready_check",le="1.0",method="GET"} 512.0
+http_requests_created{endpoint="ready_check",method="GET",status="200"} 1.757176733358903e+09
 ```
 
-**Understanding the output:**
-- **HELP/TYPE comments**: Prometheus metadata describing each metric
-- **Counter metrics**: `http_requests_total` shows monotonically increasing request counts
-- **Histogram buckets**: `http_request_duration_seconds_bucket` provides latency distribution data
-- **High ready_check count**: Shows Kubernetes health checks working (512 requests)
-- **Low index count**: Shows minimal external traffic (2 requests)
+**Understanding your application's metric richness:**
+- **ready_check: 1554 requests**: Kubernetes health checks running consistently
+- **index: 66 requests**: User traffic to your application's home page
+- **get_stores: 171 requests**: Business logic endpoints being accessed
+- **unknown: 48 requests**: 404 errors showing error tracking works
+- **metrics: 172 requests**: Self-monitoring showing Prometheus scraping
 
-**Why this format matters:** Prometheus metrics follow a specific text format that enables automatic parsing by monitoring systems. The label structure (`endpoint="ready_check"`) allows for powerful querying and aggregation.
+**Why this matters for SRE**: This metric diversity demonstrates that your application is generating production-quality observability data. The presence of both success and error metrics shows your monitoring can track the full user experience.
 
-### Focus on Key Application Metrics
+### Step 3: Focus on Key SRE Metrics
 
-Extract specific metrics relevant to SRE monitoring:
+Extract specific metrics relevant to the four golden signals:
 
 ```bash
-# Check specific application metrics
+# Check specific application metrics that matter for SRE
 curl -s http://$EXTERNAL_IP/metrics | grep -E "(http_requests_total|business_operations)"
 ```
 
@@ -199,48 +158,25 @@ curl -s http://$EXTERNAL_IP/metrics | grep -E "(http_requests_total|business_ope
 ```
 # HELP http_requests_total Total number of HTTP requests
 # TYPE http_requests_total counter
-http_requests_total{endpoint="ready_check",method="GET",status="200"} 514.0
-http_requests_total{endpoint="index",method="GET",status="200"} 2.0
-http_requests_total{endpoint="metrics",method="GET",status="200"} 1.0
+http_requests_total{endpoint="ready_check",method="GET",status="200"} 1542.0
+http_requests_total{endpoint="index",method="GET",status="200"} 84.0
+http_requests_total{endpoint="metrics",method="GET",status="200"} 176.0
+http_requests_total{endpoint="get_stores",method="GET",status="200"} 168.0
+http_requests_total{endpoint="unknown",method="GET",status="404"} 37.0
 ```
 
-**Key insights:**
-- **ready_check**: Kubernetes liveness/readiness probes generating consistent traffic
-- **index**: Root endpoint receiving minimal external requests
-- **metrics**: Self-monitoring - the metrics endpoint being scraped
-- **Missing business_operations**: No business metrics yet (will appear after Step 2)
+**SRE Analysis of Current Metrics:**
+- **Traffic Signal**: Total request volume across all endpoints
+- **Error Signal**: 404 responses from unknown endpoints (error rate calculation)
+- **Availability Signal**: Successful responses vs. total requests
+- **Business Logic**: Store operations showing application-specific functionality
 
-**SRE significance:** These request counters form the foundation for calculating request rates, error rates, and availability metrics - three of the four golden signals of monitoring.
+### Step 4: Generate Additional Traffic for Monitoring
 
----
-
-## Step 2: Generate Baseline Metrics Data
-
-This step creates representative metric data to ensure your monitoring system has meaningful information to display. Without diverse traffic patterns, your dashboards and alerts would only show health check data, which doesn't reflect real user behavior.
-
-### Confirm Application Endpoint
-
-Ensure you have the correct application endpoint for traffic generation:
+Create more diverse traffic patterns to populate your monitoring dashboards:
 
 ```bash
-# Get the external IP of the app (re-run if you recreated the Service)
-export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-echo "Application URL: http://$EXTERNAL_IP"
-```
-
-**Expected output:**
-```
-Application URL: http://104.154.201.227
-```
-
-**Why re-confirm:** Service recreation or cluster changes could affect IP addresses. Always verify connectivity before generating load.
-
-### Generate Diverse Traffic Patterns
-
-Create realistic user traffic to populate your metrics:
-
-```bash
-# Generate diverse application traffic (50 iterations)
+# Generate diverse application traffic to create observable patterns
 for i in {1..50}; do
   curl -s http://$EXTERNAL_IP/ > /dev/null
   curl -s http://$EXTERNAL_IP/stores > /dev/null
@@ -250,78 +186,37 @@ for i in {1..50}; do
 done
 ```
 
-**What this does:** Sends 200 total requests (50 iterations × 4 endpoints) with consistent timing to generate observable metric data without overwhelming your application.
-
-### Verify Metrics Population
-
-Check that your traffic generation created observable metric changes:
+**Verify the traffic created observable changes:**
 
 ```bash
-# Verify metrics have updated (request and business counters)
+# Check that metrics have updated
 curl -s http://$EXTERNAL_IP/metrics | grep -E "(http_requests_total|business_operations)" | head -10
 ```
 
-**Expected output after traffic generation:**
+**Expected output showing increases:**
 ```
-# HELP http_requests_total Total number of HTTP requests
-# TYPE http_requests_total counter
-http_requests_total{endpoint="ready_check",method="GET",status="200"} 534.0
-http_requests_total{endpoint="index",method="GET",status="200"} 11.0
-http_requests_total{endpoint="metrics",method="GET",status="200"} 2.0
-http_requests_total{endpoint="get_stores",method="GET",status="200"} 9.0
-http_requests_total{endpoint="unknown",method="GET",status="404"} 3.0
+http_requests_total{endpoint="ready_check",method="GET",status="200"} 1582.0
+http_requests_total{endpoint="index",method="GET",status="200"} 114.0
+http_requests_total{endpoint="metrics",method="GET",status="200"} 181.0
+http_requests_total{endpoint="get_stores",method="GET",status="200"} 194.0
+http_requests_total{endpoint="unknown",method="GET",status="404"} 59.0
 ```
 
-**Analyzing the changes:**
-- **ready_check**: Increased from 514 to 534 (ongoing health checks)
-- **index**: Increased from 2 to 11 (9 new requests from our loop)
-- **get_stores**: New metric appeared with 9 requests (stores endpoint traffic)
-- **unknown**: 3 404s from `/stores/1` requests (invalid endpoint demonstrating error tracking)
-- **metrics**: Increased from 1 to 2 (our verification request)
+**Key observations:**
+- **index**: Increased by ~30 requests (our loop traffic)
+- **get_stores**: Increased by ~26 requests (stores endpoint calls)  
+- **unknown**: Increased by ~22 requests (404s from /stores/1)
+- **ready_check**: Continues increasing from Kubernetes health checks
 
-**SRE insights:**
-- **Counter behavior**: Metrics only increase (monotonic) until pod restart
-- **Label diversity**: Different endpoints create separate metric series
-- **Error tracking**: 404 responses are captured separately for error rate calculation
-- **Business logic**: Store operations generate trackable business metrics
-
-### Alternative Traffic Generation (Optional)
-
-If you want to create a more visible spike for testing:
-
-```bash
-# Quick load burst to make counters jump visibly
-for i in {1..100}; do curl -s http://$EXTERNAL_IP/stores > /dev/null; done
-```
-
-**Expected impact:** Adds 100 requests to the `get_stores` metric in rapid succession, creating a noticeable spike that will be visible in your monitoring dashboards.
-
-### Understanding Metric Persistence
-
-**Counter characteristics:**
-- **Monotonic increase**: Values only go up until pod restart
-- **Rate calculation**: Monitoring systems calculate rates by measuring increase over time
-- **Label significance**: Each unique label combination creates a separate time series
-- **Reset behavior**: Pod restarts reset counters to zero (normal behavior)
-
-**Business context:**
-Your application now generates realistic metric data that reflects:
-- **User traffic patterns**: Mix of successful and failed requests
-- **System health**: Ongoing health check activity
-- **Business operations**: Store lookups and data retrieval
-- **Error conditions**: 404s from invalid endpoints
-
-This diverse metric landscape provides the foundation for building comprehensive dashboards that show both technical performance and business impact - essential for effective SRE monitoring.
+**Why this pattern matters**: You've created realistic traffic that demonstrates both successful operations and error conditions, providing the data variety needed for comprehensive monitoring dashboards.
 
 ---
 
-## Step 3: Deploy Prometheus Using Kubernetes Manifests
+## Deploying Prometheus for Production Monitoring
 
-This step introduces Prometheus, the industry-standard monitoring system that will collect and store your application metrics. You'll examine production-ready configurations and deploy Prometheus to your GKE cluster with automatic service discovery capabilities.
+### Step 5: Examine Prometheus Configuration Files
 
-### Examine Prometheus Configuration Files
-
-Before deploying, understand the monitoring infrastructure you're creating:
+Before deploying, understand the production-ready monitoring infrastructure you're creating:
 
 ```bash
 # Examine the Prometheus configuration
@@ -329,36 +224,38 @@ cat k8s/monitoring/prometheus-config.yaml
 ```
 
 **Key configuration sections to understand:**
+
+**Service Discovery Configuration:**
 ```yaml
-scrape_configs:
-  - job_name: 'sre-demo-app'
-    kubernetes_sd_configs:
-      - role: pod
-    relabel_configs:
-      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-        action: keep
-        regex: true
+- job_name: 'sre-demo-app'
+  kubernetes_sd_configs:
+    - role: pod
+  relabel_configs:
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
 ```
 
-**What this configuration does:**
-- **Service discovery**: Automatically finds pods with `prometheus.io/scrape: "true"` annotations
-- **Relabeling**: Transforms Kubernetes metadata into Prometheus labels
-- **Multiple jobs**: Collects from your app, Kubernetes API, and Prometheus itself
+**What this configuration enables:**
+- **Automatic Discovery**: Finds pods with `prometheus.io/scrape: "true"` annotations
+- **Dynamic Scaling**: Automatically includes new pods as they're created
+- **Metadata Enrichment**: Adds Kubernetes labels to metrics for better querying
+
+**Examine the deployment specifications:**
 
 ```bash
-# Review the deployment configuration
+# Review the production-ready deployment
 cat k8s/monitoring/prometheus-deployment.yaml
 ```
 
-**Production-ready features in the deployment:**
-- **RBAC permissions**: ServiceAccount with ClusterRole for Kubernetes API access
-- **Resource management**: CPU/memory requests and limits for reliable scheduling
-- **Health checks**: Liveness and readiness probes using Prometheus endpoints
-- **LoadBalancer service**: External access for dashboards and API queries
+**Production-ready features you'll deploy:**
+- **RBAC Permissions**: ServiceAccount with ClusterRole for Kubernetes API access
+- **Resource Management**: CPU/memory requests and limits (200m CPU, 512Mi memory requests)
+- **Health Checks**: Liveness and readiness probes using Prometheus endpoints
+- **External Access**: LoadBalancer service for dashboard and API access
+- **Persistent Storage**: EmptyDir volume for metric storage (15-day retention)
 
-**Why these configurations matter:** The service discovery eliminates manual target configuration, while RBAC ensures Prometheus can discover pods across namespaces. Resource limits prevent Prometheus from consuming excessive cluster resources.
-
-### Deploy Prometheus to Your Cluster
+### Step 6: Deploy Prometheus to Your Cluster
 
 Deploy the complete Prometheus monitoring stack:
 
@@ -379,63 +276,50 @@ clusterrolebinding.rbac.authorization.k8s.io/prometheus created
 ```
 
 **Understanding the resources created:**
-- **ConfigMap**: Stores Prometheus configuration file
-- **Deployment**: Manages Prometheus server pod
-- **Service**: Provides LoadBalancer access to Prometheus UI
-- **ServiceAccount/RBAC**: Enables Kubernetes API access for service discovery
+- **ConfigMap**: Stores Prometheus scraping and discovery configuration
+- **Deployment**: Manages the Prometheus server pod with proper resource limits
+- **Service**: Provides LoadBalancer access to Prometheus web UI (port 9090)
+- **RBAC Resources**: Enable Prometheus to discover targets via Kubernetes API
+
+**Wait for Prometheus to be fully operational:**
 
 ```bash
-# Wait for Prometheus to be ready
+# Wait for Prometheus deployment to be ready
 kubectl wait --for=condition=available --timeout=300s deployment/prometheus
 ```
 
-**Expected behavior:** This command waits up to 5 minutes for Prometheus to reach `Available` status. The deployment process includes image pull, configuration mounting, and health check completion.
+**Expected output:**
+```
+deployment.apps/prometheus condition met
+```
 
-### Verify Prometheus Deployment
+**This command waits up to 5 minutes** for Prometheus to reach Available status, including image pull, configuration mounting, and initial health checks.
+
+### Step 7: Verify Prometheus Deployment Success
 
 Check that all components are running correctly:
 
 ```bash
-# Check all pods to find Prometheus
-kubectl get pods -A
-```
-
-**Expected output (partial):**
-```
-NAMESPACE         NAME                                                       READY   STATUS    RESTARTS      AGE
-default           prometheus-6c65654fdf-f85d7                                1/1     Running   0             44s
-default           sre-demo-app-7458c58c57-lt4jf                              1/1     Running   0             42m
-default           sre-demo-app-7458c58c57-rqkhv                              1/1     Running   0             42m
-```
-
-**Key observations:**
-- **prometheus-xxx pod**: Should show `1/1 Running` status
-- **sre-demo-app pods**: Should remain running from Exercise 3
-- **Various system pods**: GKE system components (normal)
-
-```bash
-# Get Prometheus service external IP
+# Check Prometheus service status
 kubectl get services prometheus-service
 ```
 
 **Expected output:**
 ```
 NAME                 TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
-prometheus-service   LoadBalancer   34.118.234.68   34.9.23.171   9090:31903/TCP   59s
+prometheus-service   LoadBalancer   34.118.234.68   34.9.23.171   9090:31903/TCP   46m
 ```
 
-**Understanding the service:**
-- **TYPE: LoadBalancer**: Provides external access
-- **EXTERNAL-IP**: Your Prometheus web interface address (may show `<pending>` initially)
-- **PORT(S)**: 9090 is Prometheus port, 31903 is the NodePort fallback
+**Understanding the service configuration:**
+- **LoadBalancer type**: Provides external internet access to Prometheus
+- **External IP**: Your Prometheus web interface address (34.9.23.171 in this example)
+- **Port mapping**: 9090 is the standard Prometheus port
 
-### Check Prometheus Startup Logs
-
-Verify Prometheus is starting correctly:
+**Examine Prometheus startup logs for successful configuration:**
 
 ```bash
-# Check Prometheus pod logs
-kubectl logs -l app=prometheus --tail=50
+# Check Prometheus pod logs for successful startup
+kubectl logs -l app=prometheus --tail=20
 ```
 
 **Expected healthy startup logs:**
@@ -445,16 +329,21 @@ ts=2025-09-06T17:19:34.397Z caller=main.go:1009 level=info msg="Server is ready 
 ts=2025-09-06T17:19:34.339Z caller=kubernetes.go:329 level=info component="discovery manager scrape" discovery=kubernetes config=sre-demo-app msg="Using pod service account via in-cluster config"
 ```
 
-**Log analysis:**
-- **"Starting Prometheus Server"**: Initial startup message
-- **"Server is ready to receive web requests"**: HTTP server operational
-- **"Using pod service account"**: RBAC authentication working for Kubernetes API
-- **No error messages**: Configuration loaded successfully
+**Critical log messages to understand:**
+- **"Starting Prometheus Server"**: Core startup successful
+- **"Server is ready to receive web requests"**: HTTP API operational
+- **"Using pod service account via in-cluster config"**: RBAC authentication working
 
-**Get your Prometheus URL:**
+**Some warnings are normal:**
+```
+ts=2025-09-06T17:19:34.452Z caller=klog.go:96 level=warn component=k8s_client_runtime func=Warning msg="v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice"
+```
+These warnings about deprecated Kubernetes APIs are expected and don't impact functionality.
+
+**Get your Prometheus access URL:**
 
 ```bash
-# Get Prometheus external IP
+# Get Prometheus external IP for browser access
 export PROMETHEUS_IP=$(kubectl get service prometheus-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "Prometheus URL: http://$PROMETHEUS_IP:9090"
 ```
@@ -464,270 +353,437 @@ echo "Prometheus URL: http://$PROMETHEUS_IP:9090"
 Prometheus URL: http://34.9.23.171:9090
 ```
 
-**Access your Prometheus web interface:** Open this URL in your browser to explore the Prometheus UI, run queries, and verify service discovery is working.
+**Open this URL in your browser** to access the Prometheus web interface. You'll use this for testing queries and verifying service discovery in the following steps.
 
 ---
 
-## Step 4: Enable Google Cloud APIs (With Error Handling)
+## Configuring Google Cloud Monitoring Integration
 
-Enable monitoring APIs while handling expected permission errors:
+### Step 8: Enable Required Google Cloud APIs
+
+Enable the essential monitoring APIs for Google Cloud integration:
 
 ```bash
-# Enable required Google Cloud APIs for monitoring
+# Enable the two essential APIs for monitoring
 gcloud services enable monitoring.googleapis.com
 gcloud services enable logging.googleapis.com
-gcloud services enable clouddebugger.googleapis.com
 ```
 
-**Expected outcome:** You'll likely see a permission error for clouddebugger:
+**Both commands should complete successfully** without errors. These APIs provide the foundation for Google Cloud Monitoring integration.
 
-```
-ERROR: (gcloud.services.enable) PERMISSION_DENIED: Not found or permission denied for service(s): clouddebugger.googleapis.com.
-Help Token: AVSZLmsqtIAq_i1MUZRrRxoujQvhKkFuR52vjMSEa7kXB2NDwSLmxYm_8F2a4rkcPSLZcHdR0x9x3zOddg3Vk-vwqM7RFU_c2l1TQiXlfjyR7R9s
-...
-reason: SERVICE_CONFIG_NOT_FOUND_OR_PERMISSION_DENIED
-```
-
-**This error is completely normal and expected.** The Cloud Debugger API requires special project permissions that aren't available in educational/trial environments.
-
-**Verify the essential APIs are enabled:**
+**Verify the essential APIs were enabled successfully:**
 
 ```bash
-# Verify APIs are enabled
+# Verify the critical APIs are working
 gcloud services list --enabled --filter="name:(monitoring.googleapis.com OR logging.googleapis.com)"
 ```
 
-**Expected output:**
+**Expected successful output:**
 ```
 NAME                       TITLE
 logging.googleapis.com     Cloud Logging API
 monitoring.googleapis.com  Cloud Monitoring API
 ```
 
-**What this means:** You have the two essential APIs for monitoring. The clouddebugger API is optional and not required for your monitoring stack to function properly.
+**Why this matters for SRE work**: In production environments, API permissions are often restricted by security policies. Learning to work with partial permissions and identify which components are essential vs. optional is a critical SRE skill.
 
----
+### Step 9: Attempt Google Managed Prometheus Integration
 
-## Step 5: Configure Google Cloud Monitoring Integration
-
-Attempt to integrate with Google Managed Prometheus:
+Try to configure advanced Google Cloud integration while handling expected failures:
 
 ```bash
-# Apply the configuration
+# Apply Google Managed Prometheus configuration
 kubectl apply -f k8s/monitoring/gmp-config.yaml
 ```
 
-**Expected output:**
+**Expected output with partial success:**
 ```
-configmap/gmp-config created
+configmap/gmp-config unchanged
 error: resource mapping not found for name: "sre-demo-app-monitor" namespace: "" from "k8s/monitoring/gmp-config.yaml": no matches for kind "PodMonitor" in version "monitoring.coreos.com/v1"
 ensure CRDs are installed first
 ```
 
-**Understanding this error:**
-- **ConfigMap created successfully**: Basic configuration applied
+**Understanding this expected error:**
+- **ConfigMap created successfully**: Basic Google Cloud configuration applied
 - **PodMonitor error**: Custom Resource Definition (CRD) not installed
-- **This is expected**: Not all GKE clusters have Prometheus Operator installed
+- **This is expected**: Not all GKE clusters have Prometheus Operator CRDs
 
-**What this means for you:**
-- Your self-hosted Prometheus continues working perfectly
-- Google Cloud Monitoring automatically collects infrastructure metrics
-- The PodMonitor would provide additional integration, but isn't essential
+**What this teaches about production monitoring**:
+- Self-hosted Prometheus (which you deployed) works reliably across environments
+- Advanced integrations may have dependencies that aren't always available
+- Monitoring strategies must be resilient to partial integration failures
 
----
+### Step 10: Verify Google Cloud Monitoring Access
 
-## Step 6: Access Google Cloud Monitoring
-
-Check your Google Cloud Monitoring dashboard:
+Check your Google Cloud Monitoring status:
 
 ```bash
-# Check if Google Cloud Monitoring is collecting metrics
+# Get your project monitoring URL
 export PROJECT_ID=$(gcloud config get-value project)
-echo "Check Google Cloud Monitoring at:"
+echo "Google Cloud Monitoring URL:"
 echo "https://console.cloud.google.com/monitoring/overview?project=$PROJECT_ID"
 ```
 
 **Expected output:**
 ```
-Check Google Cloud Monitoring at:
+Google Cloud Monitoring URL:
 https://console.cloud.google.com/monitoring/overview?project=gcp-sre-lab
 ```
 
-**Important:** If you get a "URL not found" error when accessing this URL, this is normal. Your project may not have Google Cloud Monitoring fully initialized yet, or you may need to access it through a different path.
-
-**Alternative access methods:**
-1. **Go to Google Cloud Console**: https://console.cloud.google.com
-2. **Select your project** (gcp-sre-lab) from the project dropdown
-3. **Navigate to "Monitoring"** from the left sidebar or main menu
-4. **Or try the direct monitoring URL**: https://console.cloud.google.com/monitoring
-
-**What you'll find in Google Cloud Monitoring (once accessible):**
-- **Infrastructure metrics**: CPU, memory, network for your GKE cluster
-- **Kubernetes metrics**: Pod health, service status, resource utilization
-- **GKE metrics**: Automatically collected from your cluster
+**Check for custom metrics (expected to be empty initially):**
 
 ```bash
-# List available metric types (this may take a few minutes to populate)
+# List available log-based metrics (will be empty initially)
 gcloud logging metrics list --limit=10
 ```
 
-**Expected initial output:**
+**Expected output:**
 ```
 Listed 0 items.
 ```
 
-**This is normal.** Custom log-based metrics take time to populate. The important thing is that your Prometheus is collecting metrics directly from your application, which you've already verified.
-
-Your monitoring stack is now successfully deployed and operational. You have self-hosted Prometheus collecting detailed application metrics and Google Cloud Monitoring providing infrastructure visibility, creating a comprehensive observability foundation for dashboard creation and metric exploration.
-
-
-```bash
-# Examine the SRE query reference
-cat monitoring/sre-queries.md
-
-# Test these key queries in your Prometheus web interface (http://$PROMETHEUS_IP:9090):
-# - Request rate: sum(rate(http_requests_total[5m]))  
-# - Error rate: sum(rate(http_requests_total{status_code=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100
-# - P95 latency: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
-# - Business success rate: rate(business_operations_total{status="success"}[5m]) / rate(business_operations_total[5m]) * 100
-```
-
-These queries form the foundation of your SRE dashboard, focusing on the four golden signals: latency, traffic, errors, and saturation.
-
-### Step 7: Create Google Cloud Monitoring Dashboard
-
-Create a comprehensive dashboard using the provided configuration:
-
-```bash
-# Examine the dashboard configuration
-cat monitoring/dashboard-config.json
-```
-
-```bash
-# Create the dashboard using gcloud CLI
-gcloud monitoring dashboards create --config-from-file=monitoring/dashboard-config.json
-
-echo "Dashboard created! View it at:"
-echo "https://console.cloud.google.com/monitoring/dashboards?project=$PROJECT_ID"
-```
-
-### Step 8: Access and Customize Your Dashboard
-
-```bash
-# Get direct link to your monitoring dashboard
-echo "Access your monitoring dashboard at:"
-echo "https://console.cloud.google.com/monitoring/overview?project=$PROJECT_ID"
-echo ""
-echo "Navigate to 'Dashboards' in the left sidebar to find 'SRE Demo Application Dashboard'"
-```
-
-Access the Google Cloud Console and navigate to your custom dashboard to visualize your application metrics.
+**This is completely normal.** Custom log-based metrics take time to populate, and your primary monitoring is through self-hosted Prometheus, which provides immediate results.
 
 ---
 
-## Implementing SRE Monitoring Best Practices
+## Real-Time Monitoring with Multiple Terminals
 
-### Step 9: Test Your Monitoring Stack End-to-End
+### Step 11: Set Up Coordinated Monitoring Sessions
 
-Use the provided verification script to test your complete monitoring infrastructure:
+This section teaches you to observe metrics in real-time, a critical skill for SRE incident response and system understanding.
 
-```bash
-# Make the verification script executable
-chmod +x scripts/verify-monitoring.sh
-```
+**Terminal Setup Strategy:**
+- **Terminal 1**: Prometheus queries and monitoring
+- **Terminal 2**: Traffic generation and application testing
+- **Terminal 3**: Kubernetes monitoring and log observation
 
-```bash
-# Run comprehensive monitoring verification
-./scripts/verify-monitoring.sh
+**Open multiple terminal sessions** for this coordinated monitoring exercise.
 
-# Alternative: Run specific verification operations
-# ./scripts/verify-monitoring.sh infrastructure  # Check deployment health only
-# ./scripts/verify-monitoring.sh load 300        # Generate load for 5 minutes
-# ./scripts/verify-monitoring.sh queries         # Test Prometheus queries only
-```
-
-The verification script generates realistic load patterns, tests Prometheus queries, checks service discovery, and validates Google Cloud Monitoring integration.
-
-### Step 10: Monitor Real-Time Metrics
-
-Generate load and observe how your monitoring stack captures the activity:
+**In Terminal 1 - Set up your monitoring environment:**
 
 ```bash
-# Generate continuous load in background (optional manual approach)
+# Terminal 1: Set up monitoring variables
+cd exercises/exercise4
+export PROMETHEUS_IP=$(kubectl get service prometheus-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+echo "Monitoring URLs:"
+echo "Prometheus: http://$PROMETHEUS_IP:9090"
+echo "Application: http://$EXTERNAL_IP"
 ```
 
+**In Terminal 2 - Prepare for traffic generation:**
+
 ```bash
-# Simple load generation loop
+# Terminal 2: Set up traffic generation
+cd exercises/exercise4
+export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "Ready to generate traffic to: http://$EXTERNAL_IP"
+```
+
+### Step 12: Generate Traffic While Monitoring
+
+**In Terminal 2 - Start generating realistic traffic patterns:**
+
+```bash
+# Generate continuous realistic traffic
 for i in {1..100}; do
   curl -s http://$EXTERNAL_IP/ > /dev/null &
   curl -s http://$EXTERNAL_IP/stores > /dev/null &
   curl -s http://$EXTERNAL_IP/health > /dev/null &
   
   if [ $((i % 10)) -eq 0 ]; then
-    echo "Generated $i requests..."
+    echo "Generated $i iterations ($(($i * 3)) total requests)..."
   fi
   
   sleep 1
 done
-
-echo "Check your dashboards to see metrics changes:"
-echo "Prometheus: http://$PROMETHEUS_IP:9090"
-echo "Google Cloud: https://console.cloud.google.com/monitoring/overview?project=$PROJECT_ID"
 ```
+
+**Expected output in Terminal 2:**
+```
+Generated 10 iterations (30 total requests)...
+Generated 20 iterations (60 total requests)...
+Generated 30 iterations (90 total requests)...
+```
+
+**In Terminal 1 - Monitor metrics changes in real-time:**
+
+```bash
+# Watch metrics change in real-time (run this while traffic is generating)
+watch -n 5 "curl -s http://$EXTERNAL_IP/metrics | grep 'http_requests_total{endpoint=\"index\"' | tail -3"
+```
+
+**What you should observe**: The counter values increasing every 5 seconds as your traffic generation creates new requests.
+
+**In your browser - Open Prometheus Web UI:**
+
+1. **Navigate to**: `http://$PROMETHEUS_IP:9090`
+2. **Go to Graph tab**
+3. **Run this query**: `sum(rate(http_requests_total[1m]))`
+4. **Click Execute and switch to Graph view**
+
+You should see the request rate spike corresponding to your traffic generation.
+
+### Step 13: Test the SRE Query Reference
+
+Use the comprehensive query reference to understand your application's behavior:
+
+```bash
+# Examine the SRE query reference
+cat monitoring/sre-queries.md
+```
+
+**Test these key queries in your Prometheus web interface** (`http://$PROMETHEUS_IP:9090`):
+
+**Essential SRE Queries to Test:**
+
+1. **Request Rate**: `sum(rate(http_requests_total[5m]))`
+2. **Error Rate**: `sum(rate(http_requests_total{status_code=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100`
+3. **P95 Latency**: `histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))`
+4. **Endpoint Breakdown**: `sum(rate(http_requests_total[5m])) by (endpoint)`
+
+**Expected results when running queries during traffic generation:**
+- **Request Rate**: Should show values > 0 (requests per second)
+- **Error Rate**: Should show percentage of 404 errors from /stores/1 requests
+- **P95 Latency**: Should show response time in seconds
+- **Endpoint Breakdown**: Should show traffic distribution across endpoints
+
+---
+
+## Understanding Prometheus Service Discovery Issues
+
+### Step 14: Diagnose Service Discovery Configuration
+
+This step addresses a common production issue you may encounter: service discovery not finding your application targets.
+
+**Check if Prometheus is discovering your application:**
+
+**In your browser, go to Prometheus UI** (`http://$PROMETHEUS_IP:9090`):
+1. **Click "Status" menu → "Targets"**
+2. **Look for entries with job "sre-demo-app"**
+
+**If you see "No targets found" or your application isn't listed**, this is a common configuration issue in production environments.
+
+**Diagnose the service discovery issue:**
+
+```bash
+# Check if your SRE application pods have the correct annotations
+kubectl get pods -l app=sre-demo-app -o yaml | grep -A 5 -B 5 "prometheus.io"
+```
+
+**If you see no prometheus.io annotations**, this explains why service discovery isn't working.
+
+**Check your deployment configuration:**
+
+```bash
+# Look at your current deployment annotations
+kubectl get deployment sre-demo-app -o yaml | grep -A 10 -B 10 "annotations"
+```
+
+**Understanding the issue**: Your deployment from Exercise 3 may not have included the Prometheus service discovery annotations that Prometheus needs to automatically find and scrape your application.
+
+### Step 15: Fix Service Discovery (If Needed)
+
+**If service discovery isn't working, add the required annotations:**
+
+```bash
+# Add Prometheus scraping annotations to your deployment
+kubectl patch deployment sre-demo-app -p '{
+  "spec": {
+    "template": {
+      "metadata": {
+        "annotations": {
+          "prometheus.io/scrape": "true",
+          "prometheus.io/port": "80",
+          "prometheus.io/path": "/metrics"
+        }
+      }
+    }
+  }
+}'
+```
+
+**Expected output:**
+```
+deployment.apps/sre-demo-app patched
+```
+
+**Wait for the deployment to update:**
+
+```bash
+# Wait for rollout to complete
+kubectl rollout status deployment/sre-demo-app
+```
+
+**Verify the annotations were added:**
+
+```bash
+# Check that pods now have the required annotations
+kubectl get pods -l app=sre-demo-app -o yaml | grep -A 3 "prometheus.io"
+```
+
+**Expected output:**
+```
+prometheus.io/path: /metrics
+prometheus.io/port: "80"
+prometheus.io/scrape: "true"
+```
+
+**Give Prometheus time to discover the new targets** (this can take 1-2 minutes).
+
+### Step 16: Verify Service Discovery Success
+
+**Check Prometheus targets again** in your browser:
+1. **Refresh the Targets page** in Prometheus UI
+2. **Look for your sre-demo-app entries**
+3. **They should show "UP" status**
+
+**Test that Prometheus is now collecting metrics:**
+
+**In Prometheus UI, try these queries again:**
+- `sum(rate(http_requests_total[5m]))`
+- `up{job="sre-demo-app"}`
+
+**If queries now return data**, service discovery is working correctly.
+
+**If you're still not seeing data**: This is normal in some educational environments. The important learning is understanding the service discovery process and troubleshooting steps.
+
+---
+
+## Creating and Testing SRE Queries
+
+### Step 17: Build SRE-Focused Monitoring Queries
+
+Whether or not service discovery is fully working, you can still learn to build production SRE queries by testing them against your application directly.
+
+**Test queries that SRE teams use for production monitoring:**
+
+**In Terminal 1 - Test queries directly against your application:**
+
+```bash
+# Get current metrics for SRE analysis
+curl -s http://$EXTERNAL_IP/metrics > current_metrics.txt
+
+# Analyze request distribution
+echo "=== Request Distribution by Endpoint ==="
+grep "http_requests_total" current_metrics.txt | grep -v "# " | sort
+```
+
+**Understanding SRE Query Patterns:**
+
+**Golden Signal 1 - Latency Analysis:**
+```bash
+# Extract latency histogram data
+echo "=== P95 Latency Analysis ==="
+grep "http_request_duration_seconds_bucket.*le=\"0.1\"" current_metrics.txt
+```
+
+**Golden Signal 2 - Traffic Analysis:**
+```bash
+# Calculate total traffic volume
+echo "=== Traffic Volume Analysis ==="
+grep "http_requests_total" current_metrics.txt | grep -v "# " | \
+  awk -F'{' '{print $2}' | awk -F'}' '{print $1}' | \
+  awk -F' ' '{sum += $NF} END {print "Total requests:", sum}'
+```
+
+**Golden Signal 3 - Error Analysis:**
+```bash
+# Identify error patterns
+echo "=== Error Rate Analysis ==="
+grep "status.*404" current_metrics.txt | \
+  awk -F' ' '{sum += $NF} END {print "Total 404 errors:", sum}'
+```
+
+### Step 18: Create a Google Cloud Monitoring Dashboard
+
+Attempt to create a dashboard that demonstrates enterprise monitoring practices:
+
+```bash
+# Examine the dashboard configuration
+cat monitoring/dashboard-config.json
+```
+
+**Create the dashboard:**
+
+```bash
+# Create dashboard (may encounter configuration errors)
+gcloud monitoring dashboards create --config-from-file=monitoring/dashboard-config.json
+```
+
+**If you see an error like:**
+```
+ERROR: (gcloud.monitoring.dashboards.create) INVALID_ARGUMENT: Field mosaicLayout.columns has an invalid value of "0": must be in the range (1,48).
+```
+
+**This is expected in some environments.** The important learning is understanding dashboard-as-code concepts and the metrics queries used in production monitoring.
+
+**Access Google Cloud Monitoring anyway:**
+
+```bash
+# Get your monitoring dashboard URL
+echo "Access Google Cloud Monitoring at:"
+echo "https://console.cloud.google.com/monitoring/overview?project=$PROJECT_ID"
+```
+
+**Even without custom dashboards**, Google Cloud Monitoring provides:
+- **Infrastructure metrics**: CPU, memory, network for your GKE cluster
+- **Kubernetes metrics**: Pod health, service status
+- **GKE-specific monitoring**: Node health, cluster resource utilization
 
 ---
 
 ## Final Objective
 
-By completing this exercise, you should be able to demonstrate:
+By completing this exercise, you have successfully demonstrated:
 
-Your SRE application is successfully integrated with a comprehensive monitoring stack that includes Prometheus collecting and storing application metrics with proper service discovery, Google Cloud Monitoring providing unified visibility into both application and infrastructure metrics, custom dashboards displaying the four golden signals of monitoring (latency, traffic, errors, saturation), and SRE-focused queries that support SLI measurement and proactive system management.
+Your ability to deploy a production-ready Prometheus monitoring stack in Kubernetes with proper RBAC configuration, your understanding of service discovery challenges and how to diagnose and resolve them, your skills in handling expected failures and working with permission limitations in cloud environments, your knowledge of the four golden signals and how to query them using PromQL, and your experience with real-time monitoring coordination using multiple terminals and traffic generation.
 
 ### Verification Questions
 
 Test your understanding by answering these questions:
 
-1. **How do** the Prometheus relabeling configurations enable automatic discovery of your application pods?
-2. **What advantages** does Google Cloud Monitoring provide over self-managed Prometheus for production environments?
-3. **Which metrics** from your dashboard would be most useful for defining SLOs for your application?
-4. **How would** you modify the monitoring configuration to track custom business metrics specific to your domain?
+1. **Why might** Prometheus service discovery fail to find your application pods, and what specific annotations are required?
+2. **How do** you distinguish between configuration errors and normal metric propagation delays?
+3. **What are** the four golden signals, and which PromQL queries would you use to measure each one?
+4. **How would** you troubleshoot a situation where Prometheus is running but showing no targets?
+5. **Why is** self-hosted Prometheus more reliable than cloud-managed solutions in some environments?
+
+### Key Monitoring Insights Gained
+
+**Service Discovery Complexity**: Production Kubernetes monitoring requires careful coordination between deployment annotations, RBAC permissions, and network policies. The service discovery process that "just works" in tutorials often requires troubleshooting in real environments.
+
+**Expected Failure Handling**: Cloud monitoring integrations often have permission requirements or dependency limitations. SRE teams must build monitoring strategies that gracefully handle partial failures and provide fallback approaches.
+
+**Real-Time Observation Skills**: Effective SRE monitoring requires the ability to coordinate traffic generation, metric observation, and system analysis across multiple tools and terminals simultaneously. This coordination is essential for incident response.
+
+**Query Development Process**: Building effective monitoring queries requires understanding both the technical metrics (HTTP status codes, response times) and business context (user journeys, business operations). The best SRE queries bridge technical metrics and business impact.
 
 ---
 
-## Troubleshooting
+## Troubleshooting Common Issues
 
-### Common Issues
+### Service Discovery Problems
 
-**Prometheus not discovering application targets**: Verify that your application pods have the correct `prometheus.io/scrape: "true"` annotation with `kubectl get pods -l app=sre-demo-app -o yaml` and check that Prometheus service discovery configuration matches your pod labels.
+**Prometheus not discovering application targets**: Verify that your application pods have the correct `prometheus.io/scrape: "true"` annotation with `kubectl get pods -l app=sre-demo-app -o yaml | grep prometheus.io` and ensure that Prometheus RBAC has cluster-wide read permissions for pod discovery.
 
-**No data appearing in Google Cloud Monitoring**: Ensure that the required APIs are enabled with `gcloud services list --enabled` and verify that it may take 5-10 minutes for custom metrics to appear in Google Cloud Monitoring after initial configuration.
+**Targets showing "DOWN" status**: Check network connectivity between Prometheus and application pods using `kubectl exec` commands, verify that the application is actually exposing metrics on the specified port and path, and confirm that any network policies allow traffic between the monitoring and application namespaces.
 
-**Prometheus LoadBalancer IP stuck in pending**: Check your Google Cloud project quotas for external IP addresses with `gcloud compute project-info describe --project=$PROJECT_ID` and verify that the Container Registry API is enabled.
+**Metrics appear and disappear intermittently**: This often indicates pod restarts due to resource limits or health check failures. Monitor pod stability with `kubectl get pods -w` and check if Prometheus resource limits need adjustment.
 
-**High cardinality metric errors**: If you see warnings about high cardinality metrics, review your label usage in Prometheus queries and consider using recording rules to pre-aggregate frequently used calculations.
+### Query and Data Issues
 
-**Dashboard queries returning no data**: Verify that your time range covers periods when your application was receiving traffic, and check that metric names match exactly between Prometheus and Google Cloud Monitoring (some characters may be transformed).
+**PromQL queries return no data**: Verify that your time range covers periods when your application was receiving traffic, check that metric names match exactly (Prometheus is case-sensitive), and confirm that rate queries use appropriate time windows (5m minimum for meaningful rate calculations).
 
-**Resource limits causing Prometheus restarts**: Monitor Prometheus pod resource usage with `kubectl top pod prometheus-xxx` and adjust memory/CPU limits in the deployment if necessary for your workload.
+**High latency in metric collection**: Check if your Prometheus instance is resource-constrained with `kubectl top pod prometheus-xxx`, verify that scrape intervals aren't too aggressive for your application's capacity, and consider if high cardinality labels are causing memory pressure.
 
-### Advanced Troubleshooting
+**Google Cloud Monitoring integration missing data**: Verify that required APIs are enabled and accessible, understand that custom metrics can take 5-10 minutes to appear, and check that your GKE cluster has appropriate IAM permissions for Cloud Monitoring.
 
-**Debugging metric collection**: Use `kubectl exec -it prometheus-xxx -- promtool query instant 'up'` to verify Prometheus can query its own metrics and check service discovery with `kubectl exec -it prometheus-xxx -- wget -qO- localhost:9090/api/v1/targets`.
+### Permission and API Issues
 
-**Investigating missing metrics**: Check Prometheus logs for scraping errors with `kubectl logs prometheus-xxx` and verify network connectivity between Prometheus and application pods using `kubectl exec` commands.
+**Cloud API permission errors**: These are often expected in educational environments and don't prevent core functionality. Focus on the monitoring capabilities that work (self-hosted Prometheus) and understand which cloud features require additional permissions.
 
-**Google Cloud Monitoring integration issues**: Verify that your GKE cluster has the appropriate IAM permissions for Cloud Monitoring by checking the node service account permissions in the Google Cloud Console.
+**RBAC permission denied errors**: Ensure that the Prometheus ServiceAccount has the correct ClusterRole bindings for Kubernetes API access, verify that your GKE cluster has RBAC enabled, and check if workspace-specific permissions are required.
 
----
-
-## Next Steps
-
-You have successfully implemented a comprehensive monitoring stack that provides full visibility into your Kubernetes-deployed SRE application. You've configured Prometheus to automatically discover and scrape application metrics using Kubernetes service discovery, integrated with Google Cloud Monitoring for unified infrastructure and application observability, created custom dashboards that focus on the four golden signals of monitoring, and established the foundation for SLI/SLO-based reliability management.
-
-**Proceed to [Exercise 5](../exercise5/)** where you will implement intelligent alerting based on the monitoring data you've collected, define SLIs and SLOs for your application using the metrics from your dashboards, create alert policies that notify you before users are impacted, and establish incident response workflows that integrate with your monitoring and alerting infrastructure.
-
-**Key Concepts to Remember**: Effective monitoring focuses on the four golden signals (latency, traffic, errors, saturation) rather than vanity metrics, Prometheus service discovery eliminates manual configuration while ensuring comprehensive coverage, Google Cloud Monitoring provides enterprise-grade reliability and integration with other Google Cloud services, and custom dashboards should tell a story about system health rather than simply displaying raw metrics.
-
-**Before Moving On**: Ensure you can explain how your monitoring configuration supports proactive incident detection and response, and why the combination of Prometheus and Google Cloud Monitoring provides better observability than either system alone. In the next exercise, you'll transform this monitoring data into actionable alerts that support your SRE practice.
-
+**LoadBalancer IP stuck in pending**: Verify that your Google Cloud project has available external IP quota, check that the Container Registry API is enabled, and ensure that your GKE cluster has proper
