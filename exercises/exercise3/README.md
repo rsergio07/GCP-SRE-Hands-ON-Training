@@ -274,71 +274,230 @@ chmod +x scripts/deploy.sh
 
 The deployment script applies all Kubernetes manifests in the correct order, waits for pods to become ready, waits for the LoadBalancer to receive an external IP address, and runs comprehensive endpoint testing to verify the deployment succeeded.
 
-### Step 6: Monitor the Deployment Process
+## Step 6: Monitor the Deployment Process
 
-Watch your application deployment in real-time:
+This step demonstrates real-time visibility into Kubernetes orchestration. Understanding how to monitor deployments is crucial for SRE teams to identify issues immediately and understand system behavior during critical operations.
+
+### Watch Pods in Real-Time
+
+Monitor your application pods as they start and become ready:
 
 ```bash
-# Watch pods as they start
+# Watch pods as they start (use Ctrl+C to stop)
 kubectl get pods -l app=sre-demo-app -w
 ```
 
+**What you'll see:** Pods transition through lifecycle states. Initially, you might see pods in `Pending` or `ContainerCreating` states, then progressing to `Running` with `READY 1/1`.
+
+**Why this matters:** Real-time pod monitoring allows you to immediately detect deployment issues like image pull failures, resource constraints, or startup problems. The `-w` flag provides continuous updates, essential for incident response.
+
+### Check Deployment Status
+
+In another terminal, examine the overall deployment health:
+
 ```bash
-# In another terminal, check deployment status
+# Check deployment status
 kubectl get deployments
 ```
+
+**Expected output:**
+```
+NAME           READY   UP-TO-DATE   AVAILABLE   AGE
+sre-demo-app   2/2     2            2           123m
+```
+
+**Understanding the columns:**
+- **READY**: `2/2` means 2 pods are ready out of 2 desired replicas
+- **UP-TO-DATE**: `2` pods are running the latest deployment configuration
+- **AVAILABLE**: `2` pods are available to serve traffic
+- **AGE**: How long the deployment has been running
+
+**What this tells you:** A healthy deployment shows matching numbers across READY, UP-TO-DATE, and AVAILABLE. Mismatched numbers indicate ongoing deployments, failed pods, or scaling operations.
+
+### Monitor Service and External Access
+
+Check your service status and LoadBalancer provisioning:
 
 ```bash
 # Check service status and external IP
 kubectl get services
 ```
 
+**Expected output:**
+```
+NAME                TYPE           CLUSTER-IP       EXTERNAL-IP       PORT(S)        AGE
+kubernetes          ClusterIP      34.118.224.1     <none>            443/TCP        150m
+sre-demo-headless   ClusterIP      None             <none>            8080/TCP       123m
+sre-demo-service    LoadBalancer   34.118.239.219   104.154.201.227   80:31777/TCP   123m
+```
+
+**Key insights:**
+- **sre-demo-service**: Your main LoadBalancer with external IP `104.154.201.227`
+- **sre-demo-headless**: ClusterIP `None` indicates a headless service for direct pod access (used for monitoring)
+- **kubernetes**: Default cluster service for API server access
+
+**What to watch for:** External IP should show an actual IP address, not `<pending>`. If still pending, LoadBalancer provisioning is in progress (typically 2-5 minutes).
+
+### Analyze Events for Troubleshooting
+
+Examine Kubernetes events to understand deployment decisions and any issues:
+
 ```bash
 # View events for troubleshooting
 kubectl get events --sort-by=.metadata.creationTimestamp
 ```
 
-Healthy pods should show `Running` status with `READY 1/1`. The service should show an external IP address (this may take a few minutes to provision). Events provide detailed information about the deployment process and any issues.
+**What you'll see in the events (key patterns):**
+```
+LAST SEEN   TYPE      REASON                    OBJECT                           MESSAGE
+10m         Normal    ScalingReplicaSet         deployment/sre-demo-app          Scaled up replica set sre-demo-app-7458c58c57 from 0 to 1
+10m         Normal    Scheduled                 pod/sre-demo-app-7458c58c57-6cn9z Successfully assigned default/sre-demo-app-7458c58c57-6cn9z to gk3-sre-demo-cluster-nap-p0xsavji-01109c4e-cb9j
+10m         Normal    Pulling                   pod/sre-demo-app-7458c58c57-6cn9z Pulling image "us-central1-docker.pkg.dev/..."
+10m         Normal    Pulled                    pod/sre-demo-app-7458c58c57-6cn9z Successfully pulled image ... in 242ms
+10m         Normal    Created                   pod/sre-demo-app-7458c58c57-6cn9z Created container: sre-demo-app
+10m         Normal    Started                   pod/sre-demo-app-7458c58c57-6cn9z Started container sre-demo-app
+```
+
+**Understanding events:**
+- **ScalingReplicaSet**: Kubernetes creating/removing pods to match desired state
+- **Scheduled**: Pod assigned to a specific node
+- **Pulling/Pulled**: Container image download (note the speed: 242ms indicates cached images)
+- **Created/Started**: Container lifecycle completion
+
+**SRE insight:** Fast image pulls (< 1 second) indicate effective image caching. Multiple replica set events suggest the deployment went through several iterations to reach the current stable state.
 
 ---
 
-## Implementing Production-Ready Configurations
+## Step 7: Understanding Resource Management in Production
 
-### Step 7: Understand Resource Management
+This step validates that your production resource configuration properly balances performance, reliability, and cost—core concerns for SRE teams managing infrastructure at scale.
 
-Examine how your application is configured for production resource usage:
+### Examine Deployment Resource Configuration
+
+Review how your application's resource requests and limits are configured:
 
 ```bash
 # Check resource requests and limits
 kubectl describe deployment sre-demo-app
 ```
 
+**Key sections to examine:**
+
+**Resource Configuration:**
+```
+Limits:
+  cpu:                500m
+  ephemeral-storage:  1Gi
+  memory:             256Mi
+Requests:
+  cpu:                100m
+  ephemeral-storage:  1Gi
+  memory:             128Mi
+```
+
+**Health Check Configuration:**
+```
+Liveness:   http-get http://:8080/health delay=30s timeout=5s period=10s #success=1 #failure=3
+Readiness:  http-get http://:8080/ready delay=5s timeout=3s period=5s #success=1 #failure=3
+```
+
+**Understanding resource settings:**
+- **Requests**: Guaranteed resources (100m CPU = 0.1 CPU cores, 128Mi = 128 megabytes)
+- **Limits**: Maximum allowed resources (500m CPU = 0.5 cores, 256Mi = 256 megabytes)
+- **GKE Autopilot additions**: Note the `ephemeral-storage: 1Gi` automatically added by Autopilot
+
+**Why this matters:** Requests ensure your application has sufficient resources for baseline performance. Limits prevent resource contention with other workloads. The 5:1 CPU ratio (500m limit vs 100m request) allows burst capacity while guaranteeing minimum performance.
+
+### Monitor Actual Resource Usage
+
+Check how much of your allocated resources your application actually uses:
+
 ```bash
 # View current resource usage
 kubectl top pods -l app=sre-demo-app
 ```
+
+**Expected output:**
+```
+NAME                            CPU(cores)   MEMORY(bytes)   
+sre-demo-app-7458c58c57-6cn9z   2m           26Mi            
+sre-demo-app-7458c58c57-bmx6h   2m           25Mi            
+```
+
+**Resource analysis:**
+- **CPU usage**: `2m` (0.002 cores) is well below the `100m` request and `500m` limit
+- **Memory usage**: `25-26Mi` is below the `128Mi` request and `256Mi` limit
+- **Efficiency**: Application is well-sized for current load
+
+**SRE implications:** Low resource utilization indicates room for optimization. You could potentially reduce requests to improve cluster efficiency or increase limits if you expect higher load.
+
+### Check Node Resource Capacity
+
+Understand the broader cluster resource context:
 
 ```bash
 # Check node resource availability
 kubectl top nodes
 ```
 
-Your deployment specifies resource **requests** (guaranteed resources) and **limits** (maximum resources). GKE Autopilot uses these specifications to right-size nodes and ensure efficient resource utilization.
+**Expected output:**
+```
+NAME                                              CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)   
+gk3-sre-demo-cluster-nap-p0xsavji-01109c4e-cb9j   228m         1%       2369Mi          4%          
+```
 
-The resource configuration balances performance with cost efficiency. Requests ensure your application has sufficient resources to handle baseline load, while limits prevent resource contention that could affect other workloads.
+**Node capacity insights:**
+- **CPU**: `228m` used out of approximately 22.8 cores (1% utilization)
+- **Memory**: `2369Mi` used out of approximately 59GB (4% utilization)
+- **Efficiency**: Very low utilization typical of development/learning environments
 
-### Step 8: Verify Health Check Integration
+**GKE Autopilot benefit:** The cluster automatically provisions appropriately-sized nodes based on your workload requirements, ensuring efficient resource utilization without manual node management.
 
-Test how Kubernetes uses your application's health endpoints:
+---
+
+## Step 8: Verify Health Check Integration
+
+This step confirms that your application's health endpoints integrate correctly with Kubernetes orchestration, enabling self-healing and automated traffic management.
+
+### Examine Pod Health Check Details
+
+Get detailed information about how Kubernetes implements your health checks:
 
 ```bash
 # Get detailed pod information including health checks
 kubectl describe pods -l app=sre-demo-app
 ```
 
+**Health check configuration in pod description:**
+```
+Liveness:   http-get http://:8080/health delay=30s timeout=5s period=10s #success=1 #failure=3
+Readiness:  http-get http://:8080/ready delay=5s timeout=3s period=5s #success=1 #failure=3
+```
+
+**Understanding the timing parameters:**
+- **Liveness probe**: `delay=30s` allows application startup, `period=10s` checks every 10 seconds, `failure=3` requires 3 consecutive failures before restart
+- **Readiness probe**: `delay=5s` enables quick traffic routing, `period=5s` frequent traffic management decisions, `failure=3` removes from service after 3 failures
+
+**Current status indicators:**
+```
+Ready:          True
+Restart Count:  0
+```
+
+**Why this matters:** `Ready: True` confirms your `/ready` endpoint is responding correctly. `Restart Count: 0` indicates your `/health` endpoint hasn't triggered any container restarts, showing application stability.
+
+### Inspect Health Check Configuration Details
+
+Examine the exact probe configurations:
+
 ```bash
-# Check health check configuration
+# Check liveness probe configuration
 kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].livenessProbe}'
+```
+
+**Expected output:**
+```json
+{"failureThreshold":3,"httpGet":{"path":"/health","port":8080,"scheme":"HTTP"},"initialDelaySeconds":30,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":5}
 ```
 
 ```bash
@@ -346,13 +505,25 @@ kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers
 kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].readinessProbe}'
 ```
 
-Kubernetes uses your `/health` endpoint for liveness probes (determining if containers need to be restarted) and your `/ready` endpoint for readiness probes (determining if containers should receive traffic).
+**Expected output:**
+```json
+{"failureThreshold":3,"httpGet":{"path":"/ready","port":8080,"scheme":"HTTP"},"initialDelaySeconds":5,"periodSeconds":5,"successThreshold":1,"timeoutSeconds":3}
+```
 
-The health check timing parameters balance quick failure detection with avoiding false positives during normal application startup and operation.
+**Configuration analysis:**
+- **Different endpoints**: `/health` for container lifecycle, `/ready` for traffic routing
+- **Different timing**: Liveness has longer delays to avoid restart loops, readiness has faster response for traffic management
+- **Failure thresholds**: Both require 3 consecutive failures, preventing false positives from temporary issues
 
-### Step 9: Test Application Functionality
+---
 
-Verify that all your SRE instrumentation works correctly in the Kubernetes environment:
+## Step 9: Test Application Functionality in Kubernetes
+
+This step verifies that containerization and Kubernetes deployment preserve all application functionality while adding orchestration capabilities.
+
+### Extract and Test External Access
+
+Get your application's external IP address and verify basic connectivity:
 
 ```bash
 # Get the external IP address
@@ -360,9 +531,23 @@ export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.
 echo "Application URL: http://$EXTERNAL_IP"
 ```
 
+**Expected output:**
+```
+Application URL: http://104.154.201.227
+```
+
+### Verify Core Application Endpoints
+
+Test each of your application's endpoints to ensure functionality is preserved:
+
 ```bash
 # Test the root endpoint
 curl http://$EXTERNAL_IP/
+```
+
+**Expected response:**
+```json
+{"environment":"production","message":"Welcome to sre-demo-app!","status":"healthy","timestamp":1757129349.4376614,"version":"1.0.0"}
 ```
 
 ```bash
@@ -370,45 +555,86 @@ curl http://$EXTERNAL_IP/
 curl http://$EXTERNAL_IP/stores
 ```
 
+**Expected response:**
+```json
+{"processing_time":0.58,"stores":[{"id":1,"items":[{"id":1,"name":"Kubernetes Cluster","price":299.99,"stock":5},{"id":2,"name":"Prometheus Monitoring","price":149.99,"stock":12}],"location":"us-central1","name":"Cloud SRE Store"},{"id":2,"items":[{"id":3,"name":"CI/CD Pipeline","price":199.99,"stock":8},{"id":4,"name":"Container Registry","price":99.99,"stock":15}],"location":"us-east1","name":"DevOps Marketplace"}],"total_stores":2}
+```
+
 ```bash
 # Test the health endpoint
 curl http://$EXTERNAL_IP/health
 ```
 
-```bash
-# Test the metrics endpoint
-curl http://$EXTERNAL_IP/metrics
+**Expected response:**
+```json
+{"status":"ready","timestamp":1757129361.0311575}
 ```
 
+**What this proves:** All endpoints function identically to Exercise 1 and 2, demonstrating that Kubernetes deployment adds orchestration without breaking application functionality.
+
+### Test Load Distribution
+
+Verify that traffic is distributed across your pod replicas:
+
 ```bash
-# Test error handling
+# Test error handling and load distribution
 for i in {1..10}; do
-  curl -s http://$EXTERNAL_IP/stores | grep -E "(error|stores)"
+  curl -s http://$EXTERNAL_IP/stores | grep -E "(processing_time)"
 done
 ```
 
-All endpoints should work identically to Exercise 1 and 2, demonstrating that Kubernetes deployment preserves application functionality while adding orchestration capabilities.
+**Expected output pattern:**
+```json
+{"processing_time":0.286,"stores":[...]
+{"processing_time":0.382,"stores":[...]
+{"processing_time":0.234,"stores":[...]
+```
+
+**Load balancing analysis:** Different `processing_time` values and potentially different response patterns indicate requests are being distributed across multiple pod replicas. This demonstrates that the LoadBalancer service is effectively distributing traffic.
 
 ---
 
-## Monitoring and Observability Integration
+## Step 10: Verify Prometheus Metrics Integration
 
-### Validating Observability in a Distributed Environment
+This step ensures your observability data remains accessible for monitoring system integration in the distributed Kubernetes environment.
 
-In Exercise 1, you built an application with robust observability. Now that your application is running in a dynamic, distributed Kubernetes environment, it's crucial to confirm that all of that instrumentation is still working correctly. This section verifies that your application's metrics, logs, and health checks are accessible from outside the container, enabling seamless integration with monitoring systems.
+### Check Metrics Endpoint Functionality
 
-### Step 10: Verify Prometheus Metrics Integration
-
-Confirm that your Prometheus metrics are accessible for monitoring system integration:
+Verify that your Prometheus metrics are accessible and properly formatted:
 
 ```bash
 # Check metrics endpoint
 curl -s http://$EXTERNAL_IP/metrics | grep -E "(http_requests_total|business_operations)"
 ```
 
+**Expected output:**
+```
+# HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{endpoint="ready_check",method="GET",status="200"} 217.0
+http_requests_total{endpoint="index",method="GET",status="200"} 1.0
+http_requests_total{endpoint="get_stores",method="GET",status="200"} 7.0
+```
+
+**Metrics analysis:**
+- **ready_check**: High count (217) shows Kubernetes health checks working
+- **index**: Low count (1) shows minimal external access to root endpoint
+- **get_stores**: Moderate count (7) reflects your testing activity
+
+**Business vs Infrastructure metrics:** Your application exposes both user-facing business metrics (store operations) and infrastructure metrics (request counts, durations) needed for comprehensive SRE monitoring.
+
+### Verify Automatic Discovery Annotations
+
+Check that your pods have the correct annotations for monitoring system discovery:
+
 ```bash
 # Verify pod-level metrics annotations
 kubectl get pods -l app=sre-demo-app -o jsonpath='{.items[0].metadata.annotations}'
+```
+
+**Expected output:**
+```json
+{"kubectl.kubernetes.io/restartedAt":"2025-09-06T02:37:08Z","prometheus.io/path":"/metrics","prometheus.io/port":"8080","prometheus.io/scrape":"true"}
 ```
 
 ```bash
@@ -416,23 +642,68 @@ kubectl get pods -l app=sre-demo-app -o jsonpath='{.items[0].metadata.annotation
 kubectl get service sre-demo-headless -o jsonpath='{.metadata.annotations}'
 ```
 
-The Kubernetes deployment preserves all Prometheus metrics from your application while adding annotations that enable automatic metrics discovery by monitoring systems.
+**Expected output includes:**
+```json
+{"prometheus.io/path":"/metrics","prometheus.io/port":"8080","prometheus.io/scrape":"true"...}
+```
 
-Your application exposes both business metrics (store operations, request counts) and infrastructure metrics that SRE teams use for alerting and capacity planning.
+**Annotation purposes:**
+- **prometheus.io/scrape: "true"**: Tells monitoring systems to collect metrics from this resource
+- **prometheus.io/port: "8080"**: Specifies which port to scrape metrics from
+- **prometheus.io/path: "/metrics"**: Defines the metrics endpoint path
 
-### Step 11: Examine Application Logs
+**Why two services:** The headless service provides direct pod access for monitoring, while the LoadBalancer service handles user traffic. This separation ensures monitoring can collect metrics even during service disruptions.
 
-Test structured logging integration with Kubernetes logging infrastructure:
+---
+
+## Step 11: Examine Application Logs in Kubernetes
+
+This step validates that structured logging integrates properly with Kubernetes logging infrastructure, enabling effective troubleshooting and operational analysis.
+
+### View Aggregated Application Logs
+
+Check your application's structured logs across all pod replicas:
 
 ```bash
 # View application logs
 kubectl logs -l app=sre-demo-app --tail=50
 ```
 
+**Expected log pattern:**
+```json
+2025-09-06 03:29:21,975 - __main__ - INFO - Response: {"timestamp": "2025-09-06T03:29:21.975386", "method": "GET", "path": "/ready", "status_code": 200, "duration_ms": 0.21}
+2025-09-06 03:29:26,881 - __main__ - INFO - Request: {"timestamp": "2025-09-06T03:29:26.881003", "method": "GET", "path": "/metrics", "remote_addr": "74.249.85.192", "user_agent": "curl/8.5.0"}
+2025-09-06 03:29:29,150 - __main__ - INFO - Request: {"timestamp": "2025-09-06T03:29:29.150893", "method": "GET", "path": "/health", "remote_addr": "10.116.128.1", "user_agent": "kube-probe/1.33"}
+```
+
+**Log analysis insights:**
+- **Health check traffic**: `remote_addr: "10.116.128.1"` with `user_agent: "kube-probe/1.33"` shows Kubernetes health checks
+- **External traffic**: `remote_addr: "74.249.85.192"` with `user_agent: "curl/8.5.0"` shows your testing requests
+- **Structured format**: JSON-structured logs enable easy parsing by log aggregation systems
+
+### Monitor Logs in Real-Time
+
+Watch logs as they're generated to understand traffic patterns:
+
 ```bash
 # Follow logs in real-time
 kubectl logs -l app=sre-demo-app -f
 ```
+
+**What you'll observe:**
+```json
+2025-09-06 03:30:01,975 - __main__ - INFO - Request: {"timestamp": "2025-09-06T03:30:01.974932", "method": "GET", "path": "/ready", "remote_addr": "10.116.128.1", "user_agent": "kube-probe/1.33"}
+2025-09-06 03:30:09,150 - __main__ - INFO - Request: {"timestamp": "2025-09-06T03:30:09.150373", "method": "GET", "path": "/health", "remote_addr": "10.116.128.1", "user_agent": "kube-probe/1.33"}
+```
+
+**Traffic patterns:**
+- **Readiness probes**: Every 5 seconds (`/ready` endpoint)
+- **Liveness probes**: Every 10 seconds (`/health` endpoint)
+- **Dual pod logging**: Logs from both pod replicas are aggregated into a single stream
+
+### Generate Traffic and Observe Correlation
+
+Create application activity and watch the corresponding log entries:
 
 ```bash
 # Generate some traffic and observe logs
@@ -443,9 +714,17 @@ for i in {1..5}; do
 done
 ```
 
-Application logs maintain structured JSON format in production, enabling log aggregation systems to parse and analyze log data for troubleshooting and monitoring purposes.
+**Expected log correlation:** After running this command, you should see new log entries in your real-time log stream showing the request/response pairs for both the root endpoint and stores endpoint, with external IP addresses and curl user agents.
 
-The log correlation with Kubernetes metadata (pod names, namespaces) provides the context needed for effective troubleshooting in distributed environments.
+**SRE value:** This correlation between actions and logs demonstrates how structured logging in Kubernetes enables effective troubleshooting during incidents. The combination of timestamps, request IDs, and pod identification provides the context needed for root cause analysis in distributed systems.
+
+### Understanding Log Aggregation
+
+**Multi-pod aggregation:** The `kubectl logs -l app=sre-demo-app` command automatically aggregates logs from all pods matching the label selector. This provides a unified view of your application's behavior across replicas.
+
+**Kubernetes metadata:** Each log entry includes implicit context about which pod generated it, enabling you to correlate logs with specific infrastructure events or pod failures.
+
+**Production considerations:** In production environments, these logs would typically be forwarded to centralized logging systems (like Google Cloud Logging, ELK stack, or Splunk) where they can be indexed, searched, and correlated with metrics for comprehensive observability.
 
 ---
 
