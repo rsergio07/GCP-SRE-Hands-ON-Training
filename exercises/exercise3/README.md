@@ -1188,9 +1188,13 @@ You have successfully deployed a production-ready SRE application to Google Kube
 ### What You've Accomplished
 
 **Infrastructure Automation**: Your application deploys consistently across environments with declarative configuration, eliminating manual deployment variations.
+
 **Reliability Engineering**: Health checks and self-healing ensure applications recover automatically from failures without human intervention.
+
 **Performance Management**: Resource requests and limits optimize both application performance and cluster efficiency.
+
 **Scalability Foundation**: HPA provides automatic capacity management that responds to demand without over-provisioning resources.
+
 **Observability Integration**: Metrics, logs, and health endpoints provide comprehensive visibility into application behavior in distributed environments.
 
 ### Prepare for Exercise 4
