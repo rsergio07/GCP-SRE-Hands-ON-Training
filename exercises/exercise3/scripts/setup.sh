@@ -194,12 +194,26 @@ main() {
     configure_kubectl $cluster_name $location
     update_manifests
     
-    print_success "Setup complete! You can now deploy your application with:"
-    print_status "  ./scripts/deploy.sh"
+    print_success "GKE cluster setup complete!"
     print_status ""
-    print_status "Monitor deployment with:"
-    print_status "  kubectl get pods -w"
-    print_status "  kubectl get services"
+    print_warning "IMPORTANT: Your cluster auto-scaled to zero nodes (this is normal)."
+    print_warning "Nodes will be created automatically when you deploy your application."
+    print_status ""
+    print_success "NEXT STEPS:"
+    print_status "1. Return to Exercise 3 README"
+    print_status "2. Continue with 'Step 4: Examine the Kubernetes Manifests'"
+    print_status "3. Understand your deployment configuration"
+    print_status "4. Run './scripts/deploy.sh' when ready"
+    print_status ""
+    print_status "The deployment script will:"
+    print_status "- Create nodes automatically (3-5 minutes)"
+    print_status "- Deploy your SRE application"
+    print_status "- Run comprehensive verification tests"
+    print_status ""
+    print_status "Quick commands for reference:"
+    print_status "  ./scripts/deploy.sh        # Deploy application"
+    print_status "  kubectl get pods -w        # Monitor deployment"
+    print_status "  kubectl get services       # Check services"
 }
 
 # Handle script arguments

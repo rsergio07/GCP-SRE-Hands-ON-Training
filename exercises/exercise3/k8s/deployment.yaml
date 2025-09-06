@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: sre-demo-app
-        image: us-central1-docker.pkg.dev/PROJECT_ID/sre-demo-app:latest
+        image: us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app:latest
         ports:
         - containerPort: 8080
           name: http
