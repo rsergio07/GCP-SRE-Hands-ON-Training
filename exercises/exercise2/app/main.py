@@ -203,6 +203,15 @@ def get_stores():
 
 
 @app.route('/health')
+@app.route("/ready")
+def ready_check():
+    """Readiness probe endpoint for Kubernetes."""
+    return jsonify({
+        "status": "ready",
+        "timestamp": time.time()
+    })
+
+
 def health_check():
     """Health check endpoint for container orchestration."""
     health_status = {
