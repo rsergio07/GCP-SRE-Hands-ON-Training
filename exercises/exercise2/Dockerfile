@@ -39,15 +39,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set application directory
 WORKDIR /app
 
-# Copy Python packages from builder stage
-COPY --from=builder /root/.local /home/appuser/.local
+# Copy Python packages from builder stage - FIX: Use proper path
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
 
 # Copy application code
-COPY app/ ./app/
-COPY requirements.txt .
-
-# Change ownership to non-root user
-RUN chown -R appuser:appuser /app
+COPY --chown=appuser:appuser app/ ./app/
+COPY --chown=appuser:appuser requirements.txt .
 
 # Switch to non-root user
 USER appuser
