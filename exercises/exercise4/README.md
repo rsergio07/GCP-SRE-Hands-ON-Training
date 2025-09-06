@@ -72,8 +72,8 @@ sre-demo-service   LoadBalancer   34.118.234.68   104.154.201.227   80:30123/TCP
 ### Observability in Production Systems
 
 **Essential Watching** (15 minutes):
-- [Observability vs Monitoring Explained](https://www.youtube.com/watch?v=CAQ_a2-9UOI) by Honeycomb
-- [The Four Golden Signals](https://www.youtube.com/watch?v=tEylFyxbDLE) by Google SRE
+- [Observability vs Monitoring Explained](https://www.youtube.com/watch?v=CAQ_a2-9UOI) by IBM Technology
+- [SLIs, SLOs, SLAs, oh my! (class SRE implements DevOps)](https://www.youtube.com/watch?v=tEylFyxbDLE) by Google SRE
 
 **Reference Documentation**:
 - [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
