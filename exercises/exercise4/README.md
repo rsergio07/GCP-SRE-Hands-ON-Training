@@ -738,27 +738,27 @@ echo "https://console.cloud.google.com/monitoring/overview?project=$PROJECT_ID"
 
 By completing this exercise, you have successfully demonstrated:
 
-Your ability to deploy a production-ready Prometheus monitoring stack in Kubernetes with proper RBAC configuration, your understanding of service discovery challenges and how to diagnose and resolve them, your skills in handling expected failures and working with permission limitations in cloud environments, your knowledge of the four golden signals and how to query them using PromQL, and your experience with real-time monitoring coordination using multiple terminals and traffic generation.
+Your ability to deploy a production-ready Prometheus monitoring stack in Kubernetes with proper RBAC configuration, your understanding of advanced monitoring integration patterns and their environmental dependencies, your skills in real-time traffic coordination and metric observation across multiple terminals, your knowledge of the four golden signals and how to query them using PromQL, your experience with dashboard-as-code concepts and production monitoring design principles, and your understanding of how monitoring architectures must adapt to different cluster configurations and permission constraints.
 
 ### Verification Questions
 
 Test your understanding by answering these questions:
 
 1. **Why might** Prometheus service discovery fail to find your application pods, and what specific annotations are required?
-2. **How do** you distinguish between configuration errors and normal metric propagation delays?
+2. **How do** advanced monitoring integrations like PodMonitor differ from basic Prometheus configuration?
 3. **What are** the four golden signals, and which PromQL queries would you use to measure each one?
-4. **How would** you troubleshoot a situation where Prometheus is running but showing no targets?
-5. **Why is** self-hosted Prometheus more reliable than cloud-managed solutions in some environments?
+4. **How would** you design a dashboard that supports both technical monitoring and business decision-making?
+5. **Why is** understanding configuration limitations as important as successful deployments?
 
 ### Key Monitoring Insights Gained
 
-**Service Discovery Complexity**: Production Kubernetes monitoring requires careful coordination between deployment annotations, RBAC permissions, and network policies. The service discovery process that "just works" in tutorials often requires troubleshooting in real environments.
+**Production Monitoring Complexity**: Enterprise monitoring systems require multiple layers of configuration, from basic metric collection to advanced service discovery and dashboard automation. Understanding both simple and complex approaches prepares you for various production environments.
 
-**Expected Failure Handling**: Cloud monitoring integrations often have permission requirements or dependency limitations. SRE teams must build monitoring strategies that gracefully handle partial failures and provide fallback approaches.
+**Configuration Resilience**: Monitoring strategies must work across different cluster configurations, permission levels, and integration capabilities. Building monitoring that degrades gracefully when advanced features aren't available ensures reliable observability.
 
-**Real-Time Observation Skills**: Effective SRE monitoring requires the ability to coordinate traffic generation, metric observation, and system analysis across multiple tools and terminals simultaneously. This coordination is essential for incident response.
+**Real-Time Coordination Skills**: Effective SRE work requires coordinating traffic generation, metric observation, and system analysis across multiple tools simultaneously. This coordination becomes critical during incident response and system optimization efforts.
 
-**Query Development Process**: Building effective monitoring queries requires understanding both the technical metrics (HTTP status codes, response times) and business context (user journeys, business operations). The best SRE queries bridge technical metrics and business impact.
+**Dashboard Design Principles**: Production dashboards must balance technical detail with business context, providing both immediate operational insights and longer-term trend analysis. Understanding dashboard-as-code approaches enables consistent monitoring experiences across teams.
 
 ---
 
@@ -787,3 +787,13 @@ Test your understanding by answering these questions:
 **RBAC permission denied errors**: Ensure that the Prometheus ServiceAccount has the correct ClusterRole bindings for Kubernetes API access, verify that your GKE cluster has RBAC enabled, and check if workspace-specific permissions are required.
 
 **LoadBalancer IP stuck in pending**: Verify that your Google Cloud project has available external IP quota, check that the Container Registry API is enabled, and ensure that your GKE cluster has proper
+
+## Next Steps
+
+You have successfully implemented comprehensive monitoring and alerting capabilities that focus on user impact rather than system behavior. You've defined meaningful SLIs and SLOs that guide reliability decisions, created alert policies that notify teams of actionable problems, established incident response procedures that minimize MTTR, and implemented error budget management that balances reliability with development velocity.
+
+**Proceed to [Exercise 5](../exercise5/)** where you will implement intelligent alerting and incident response workflows based on the monitoring infrastructure established in this exercise, define Service Level Indicators (SLIs) and Service Level Objectives (SLOs) that measure user experience, create alert policies that signal actionable problems without generating noise, and establish incident response procedures that support effective problem resolution and minimize Mean Time to Resolution (MTTR).
+
+**Key Concepts to Remember**: Effective monitoring provides visibility into system behavior but requires intelligent alerting to drive action. Service discovery and metric collection are the foundation, but alert policies and incident response procedures determine operational effectiveness. Self-hosted Prometheus provides reliable metrics collection across diverse environments, while structured observability data enables both automated alerting and manual investigation during incidents.
+
+**Before Moving On**: Ensure you can explain how your monitoring stack collects and stores metrics, why service discovery configuration is critical for dynamic environments, and how the metrics you've implemented support both immediate troubleshooting and long-term reliability analysis. In the next exercise, you'll build alerting policies that convert this observability data into actionable incident response workflows.
