@@ -726,76 +726,281 @@ done
 
 **Production considerations:** In production environments, these logs would typically be forwarded to centralized logging systems (like Google Cloud Logging, ELK stack, or Splunk) where they can be indexed, searched, and correlated with metrics for comprehensive observability.
 
----
+## Step 12: Verify Horizontal Pod Autoscaler Configuration
 
-## Testing Autoscaling and Load Management
+This step demonstrates how Kubernetes can automatically scale your application based on resource utilization, a critical capability for maintaining performance during traffic spikes while optimizing costs during low usage periods.
 
-### The Self-Healing, Self-Scaling System
+### Check Current HPA Status
 
-One of the most powerful features of a container orchestration platform is its ability to automatically manage reliability and performance without human intervention. This section demonstrates how Kubernetes reacts to changing conditions. You will test the application’s **horizontal autoscaling** and its ability to **self-heal** from failures, reinforcing why Kubernetes is an essential platform for building resilient, production-grade systems.
-
-### Step 12: Verify Horizontal Pod Autoscaler Configuration
-
-Check that your application is configured for automatic scaling:
+Examine your autoscaler's current state and metrics:
 
 ```bash
 # Check HPA status
 kubectl get hpa
 ```
 
+**Expected output:**
+```
+NAME           REFERENCE                 TARGETS                        MINPODS   MAXPODS   REPLICAS   AGE
+sre-demo-hpa   Deployment/sre-demo-app   cpu: 1%/70%, memory: 21%/80%   2         10        2          15h
+```
+
+**Understanding HPA status:**
+- **TARGETS**: `cpu: 1%/70%` means current CPU is 1% of requests vs 70% threshold; `memory: 21%/80%` means current memory is 21% vs 80% threshold
+- **MINPODS/MAXPODS**: Scaling boundaries (2 minimum, 10 maximum replicas)
+- **REPLICAS**: Current number of running pods (2)
+
+**What this tells you:** Your application is currently well below scaling thresholds, indicating normal load conditions. The HPA is actively monitoring but no scaling action is needed.
+
+### Examine Detailed Autoscaler Configuration
+
+Get comprehensive information about scaling policies and current state:
+
 ```bash
 # Get detailed HPA information
 kubectl describe hpa sre-demo-hpa
 ```
+
+**Key sections in the output:**
+
+**Current Metrics:**
+```
+Metrics:                                                  ( current / target )
+  resource cpu on pods  (as a percentage of request):     1% (1m) / 70%
+  resource memory on pods  (as a percentage of request):  21% (27836416) / 80%
+```
+
+**Scaling Behavior Configuration:**
+```
+Behavior:
+  Scale Up:
+    Stabilization Window: 60 seconds
+    Select Policy: Max
+    Policies:
+      - Type: Percent  Value: 100  Period: 15 seconds
+      - Type: Pods     Value: 2    Period: 60 seconds
+  Scale Down:
+    Stabilization Window: 300 seconds
+    Select Policy: Min
+    Policies:
+      - Type: Percent  Value: 10  Period: 60 seconds
+```
+
+**Understanding scaling behavior:**
+- **Scale Up**: Can double pod count (100%) every 15 seconds or add 2 pods every 60 seconds, whichever is more aggressive
+- **Scale Down**: Can only reduce by 10% every 60 seconds, much more conservative
+- **Stabilization Windows**: 60 seconds for scale-up, 300 seconds (5 minutes) for scale-down prevents thrashing
+
+**Current Conditions:**
+```
+Conditions:
+  Type            Status  Reason            Message
+  ----            ------  ------            -------
+  AbleToScale     True    ReadyForNewScale  recommended size matches current size
+  ScalingActive   True    ValidMetricFound  the HPA was able to successfully calculate a replica count from cpu resource utilization (percentage of request)
+  ScalingLimited  True    TooFewReplicas    the desired replica count is less than the minimum replica count
+```
+
+**Condition analysis:**
+- **AbleToScale: True**: HPA can make scaling decisions
+- **ScalingActive: True**: Metrics collection is working properly
+- **ScalingLimited: True**: Currently at minimum replica count (2), cannot scale down further
+
+### View Raw Autoscaler Metrics
+
+Examine the complete HPA configuration including current resource measurements:
 
 ```bash
 # View current metrics used for scaling decisions
 kubectl get hpa sre-demo-hpa -o yaml
 ```
 
-The HorizontalPodAutoscaler monitors CPU and memory utilization, automatically adding or removing pods based on actual resource usage. The scaling policies prevent rapid scaling events that could destabilize the application.
+**Focus on the status section:**
+```yaml
+status:
+  currentMetrics:
+  - resource:
+      current:
+        averageUtilization: 1
+        averageValue: 1m
+        value: 2m
+      name: cpu
+    type: Resource
+  - resource:
+      current:
+        averageUtilization: 21
+        averageValue: "27717632"
+        value: "55435264"
+      name: memory
+    type: Resource
+  currentReplicas: 2
+  desiredReplicas: 2
+```
 
-### Step 13: Test Load Handling and Scaling
+**Metrics interpretation:**
+- **CPU**: `averageUtilization: 1` means 1% of CPU requests across pods, `value: 2m` shows total CPU usage across all replicas
+- **Memory**: `averageUtilization: 21` means 21% of memory requests, `value: "55435264"` shows total memory usage in bytes
+- **Replica Status**: `currentReplicas: 2` equals `desiredReplicas: 2`, indicating stable state
 
-Generate load to test your application's scaling behavior:
+---
+
+## Step 13: Test Load Handling and Scaling
+
+This step demonstrates how your application responds to increased load and whether autoscaling thresholds trigger pod creation under realistic conditions.
+
+### Run Load Testing
+
+Execute a more intensive load test to increase resource utilization:
 
 ```bash
 # Run a more intensive load test
 ./scripts/deploy.sh test
 ```
 
+**Expected output:**
+```
+[INFO] Running tests...
+[INFO] Testing application endpoints at http://104.154.201.227
+[SUCCESS] Home endpoint (/) is responding
+[SUCCESS] Stores endpoint (/stores) is responding
+[SUCCESS] Health endpoint (/health) is responding
+[SUCCESS] Metrics endpoint (/metrics) is responding
+[SUCCESS] All endpoints are working correctly
+[INFO] Running basic load test with 50 requests...
+```
+
+**What this test does:** The script sends 50 concurrent requests to your application, testing both functional endpoints and generating sustained load that may trigger autoscaling if thresholds are reached.
+
+### Monitor Pod Scaling in Real-Time
+
+Watch for new pods being created during load testing:
+
 ```bash
 # Monitor scaling during load test (in another terminal)
 watch kubectl get pods -l app=sre-demo-app
 ```
+
+**What to watch for:** Pod count should remain at 2 initially. If CPU/memory usage exceeds thresholds (70% CPU or 80% memory), you'll see new pods appear with status `Pending` → `ContainerCreating` → `Running`.
+
+**Typical behavior:** The 50-request load test may not generate enough sustained load to trigger scaling in this demo application, which is intentionally lightweight.
+
+### Check Resource Usage During Load
+
+Monitor actual resource consumption during the load test:
 
 ```bash
 # Check resource usage during load
 kubectl top pods -l app=sre-demo-app
 ```
 
+**Expected output:**
+```
+NAME                            CPU(cores)   MEMORY(bytes)   
+sre-demo-app-7458c58c57-6cn9z   2m           26Mi            
+sre-demo-app-7458c58c57-bmx6h   2m           26Mi            
+```
+
+**Resource analysis:**
+- **CPU usage**: `2m` (0.002 cores) remains well below the 70m threshold (70% of 100m request)
+- **Memory usage**: `26Mi` stays below the 102Mi threshold (80% of 128Mi request)
+- **Scaling trigger**: No scaling occurs because utilization remains below thresholds
+
+### Examine HPA Events and Decision-Making
+
+Check if the load test generated any autoscaling events:
+
 ```bash
 # View HPA events
 kubectl describe hpa sre-demo-hpa
 ```
 
-Under sustained load, you should observe CPU utilization increasing and potentially new pods being created if the load exceeds the scaling thresholds.
+**In the Events section, you might see:**
+```
+Events:           <none>
+```
 
-The autoscaling behavior demonstrates how Kubernetes automatically maintains application performance under varying load conditions without manual intervention.
+**What this means:** No scaling events occurred because resource utilization didn't exceed the configured thresholds. The HPA continuously monitors but only acts when thresholds are breached for the stabilization window duration.
 
-### Step 14: Test Failure Recovery
+**Real-world scaling:** In production environments with higher traffic or more resource-intensive applications, you would see events like:
+```
+Normal  SuccessfulRescale  5m  horizontal-pod-autoscaler  New size: 4; reason: cpu resource utilization (percentage of request) above target
+```
 
-Simulate application failures to verify Kubernetes recovery mechanisms:
+---
+
+## Step 14: Test Failure Recovery (Self-Healing)
+
+This step demonstrates Kubernetes self-healing capabilities by simulating pod failures and observing automatic recovery—a core reliability feature that distinguishes orchestrated from manual container deployments.
+
+### Simulate Pod Failure
+
+Delete a running pod to test automatic replacement:
 
 ```bash
 # Delete a pod to test automatic recovery
 kubectl delete pod $(kubectl get pods -l app=sre-demo-app -o jsonpath='{.items[0].metadata.name}')
 ```
 
+**Expected output:**
+```
+pod "sre-demo-app-7458c58c57-6cn9z" deleted from default namespace
+```
+
+**What happens immediately:** Kubernetes deployment controller detects that the actual replica count (1) is below the desired count (2) and immediately creates a replacement pod.
+
+### Watch the Recovery Process
+
+**CRITICAL: You must open a second terminal BEFORE deleting the pod to see the recovery process.**
+
+**Step 1: In a second terminal window/tab**, start monitoring pods:
+
 ```bash
 # Watch recovery process
 kubectl get pods -l app=sre-demo-app -w
 ```
+
+This will show your current 2 running pods and wait for changes.
+
+**Step 2: Return to your first terminal** and delete a pod:
+
+```bash
+# Delete a pod to test automatic recovery
+kubectl delete pod $(kubectl get pods -l app=sre-demo-app -o jsonpath='{.items[0].metadata.name}')
+```
+
+**Expected output:**
+```
+pod "sre-demo-app-7458c58c57-6cn9z" deleted from default namespace
+```
+
+**Step 3: Immediately switch to your second terminal** to watch the recovery sequence unfold.
+
+**Expected recovery sequence in your watch terminal:**
+```
+NAME                            READY   STATUS        RESTARTS   AGE
+sre-demo-app-7458c58c57-2qrtk   0/1     Pending       0          24s
+sre-demo-app-7458c58c57-6cn9z   1/1     Terminating   0          13h
+sre-demo-app-7458c58c57-bmx6h   1/1     Running       0          13h
+sre-demo-app-7458c58c57-6cn9z   0/1     Error         0          13h
+sre-demo-app-7458c58c57-2qrtk   0/1     Pending       0          31s
+sre-demo-app-7458c58c57-2qrtk   0/1     ContainerCreating   0          31s
+sre-demo-app-7458c58c57-2qrtk   0/1     Running             0          33s
+sre-demo-app-7458c58c57-2qrtk   1/1     Running             0          40s
+```
+
+**Recovery timeline analysis:**
+1. **Immediate creation**: New pod (`2qrtk`) appears in `Pending` state within seconds
+2. **Graceful termination**: Deleted pod (`6cn9z`) transitions through `Terminating` → `Error` states
+3. **Container startup**: New pod progresses through `ContainerCreating` → `Running` → `Ready`
+4. **Full recovery**: Total recovery time approximately 40 seconds
+
+**What you're watching:** Kubernetes deployment controller detects the replica count drop and immediately creates a replacement. The watch command updates every 2 seconds, so you see each state change in real-time.
+
+**SRE significance:** This automatic recovery ensures your application maintains desired capacity even during infrastructure failures, pod crashes, or node issues without manual intervention.
+
+### Verify Service Continuity
+
+**While leaving the watch command running in your second terminal**, **in your first terminal** test that your application remains accessible during pod recovery:
 
 ```bash
 # Test service continuity during recovery
@@ -805,43 +1010,30 @@ for i in {1..10}; do
 done
 ```
 
-Kubernetes should immediately create a new pod to replace the deleted one, maintaining the desired replica count. Service traffic should continue flowing to healthy pods during the recovery process.
-
-This demonstrates the self-healing capabilities that make Kubernetes deployments more reliable than individual container deployments.
-
-### Step 15: Clean Up Your Container Images
-
-To avoid incurring storage costs, it's a best practice to delete the container images you no longer need. The images you pushed to Artifact Registry in this exercise are no longer required for the course.
-
-Run the following command to delete all images in your repository. This process can take a few minutes.
-
-```bash
-# Get the digest of the parent manifest list and delete it first
-PARENT_DIGEST=$(gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app \
-  --format="value(DIGEST)" | grep -v 'None' | tail -n 1)
-
-gcloud artifacts docker images delete us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app@${PARENT_DIGEST} --delete-tags --quiet
-
-# Then, run a loop to delete all remaining child images
-gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app \
-  --format="value(IMAGE,DIGEST)" | while read -r image digest; do
-    gcloud artifacts docker images delete "${image}@${digest}" --delete-tags --quiet
-done
+**Expected behavior:** All health check requests should return successful responses like:
+```
+"status":"ready"
+"status":"ready"
+"status":"ready"
 ```
 
-Once the command completes, you can verify that the registry is empty:
+**Load balancing during recovery:** The LoadBalancer service automatically routes traffic only to healthy pods. During the ~40-second recovery window, traffic goes exclusively to the remaining healthy pod, ensuring zero service interruption.
 
-```bash
-gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app
-```
+**Pro tip:** If you time this correctly, you can watch the pod recovery in your second terminal while simultaneously verifying that service requests continue succeeding in your first terminal—demonstrating true zero-downtime recovery.
 
-**Expected Output:**
+### Understanding Self-Healing Architecture
 
-```
-Listing items under project gcp-sre-lab, location us-central1, repository sre-demo-app.
+**Deployment Controller Logic:** The deployment continuously monitors actual vs desired state. When the replica count drops below the specified minimum, it immediately creates replacement pods.
 
-Listed 0 items.
-```
+**Service Discovery Integration:** The service automatically discovers healthy pods through label selectors and health check status, removing failed pods from rotation without manual configuration changes.
+
+**Comparison to Manual Container Management:** Without Kubernetes, a failed container would require manual detection, removal, and restart. This automated recovery reduces mean time to recovery (MTTR) from minutes or hours to seconds.
+
+**Production Implications:** This self-healing capability enables applications to automatically recover from:
+- Container crashes due to application bugs
+- Node failures or resource exhaustion  
+- Network partitions affecting individual pods
+- Pod evictions during cluster maintenance
 
 ---
 
@@ -856,9 +1048,40 @@ Your containerized application successfully deploys to GKE Autopilot with proper
 Test your understanding by answering these questions:
 
 1. **What happens** when you delete a pod from your deployment, and why is this different from running containers manually?
+   
+   **Expected understanding:** Kubernetes immediately creates a replacement pod to maintain the desired replica count (2), while manual containers would require human intervention to detect failure and restart. The deployment controller continuously monitors actual vs desired state.
+
 2. **How does** the HorizontalPodAutoscaler use your application's resource requests to make scaling decisions?
+   
+   **Expected understanding:** HPA calculates current utilization as a percentage of resource requests (e.g., if pods use 70m CPU and request 100m, that's 70% utilization). Scaling triggers when utilization exceeds thresholds (70% CPU or 80% memory) for the stabilization window duration.
+
 3. **Why are** both liveness and readiness probes necessary, and what different actions do they trigger?
+   
+   **Expected understanding:** Liveness probes trigger container restarts when applications hang or crash (checks `/health`), while readiness probes control traffic routing when applications are temporarily unavailable (checks `/ready`). Different endpoints prevent restart loops during temporary overload.
+
 4. **What would** happen if you removed the resource limits from your deployment configuration?
+   
+   **Expected understanding:** Pods could consume unlimited CPU/memory, potentially affecting other workloads on the same node. GKE Autopilot would automatically add resource limits, but without proper limits, applications could experience performance degradation under resource contention.
+
+### Practical Verification Commands
+
+Run these commands to verify your deployment is working correctly:
+
+```bash
+# Verify all pods are running and ready
+kubectl get pods -l app=sre-demo-app
+
+# Confirm HPA is monitoring metrics
+kubectl get hpa sre-demo-hpa
+
+# Test external accessibility
+curl http://$EXTERNAL_IP/health
+
+# Check resource utilization
+kubectl top pods -l app=sre-demo-app
+```
+
+**Expected results:** 2/2 pods ready, HPA showing current metrics below thresholds, health endpoint returning `{"status":"ready"}`, and resource usage well below limits.
 
 ---
 
@@ -868,27 +1091,109 @@ Test your understanding by answering these questions:
 
 **Pods stuck in Pending state**: Check resource requests against node capacity with `kubectl describe nodes` and `kubectl describe pod <pod-name>`. GKE Autopilot will provision new nodes automatically, but this can take several minutes.
 
+```bash
+# Debug pending pods
+kubectl describe pod <pod-name>
+kubectl get events --sort-by=.metadata.creationTimestamp
+```
+
 **External IP remains <pending> for LoadBalancer service**: GKE LoadBalancer provisioning typically takes 2-5 minutes. Check service status with `kubectl describe service sre-demo-service` and verify that your Google Cloud project has sufficient quota for external IP addresses.
+
+```bash
+# Check LoadBalancer status
+kubectl describe service sre-demo-service
+gcloud compute addresses list
+```
 
 **Health check failures causing pod restarts**: Review health check timing in deployment.yaml and verify that your application starts within the `initialDelaySeconds` period. Check pod logs with `kubectl logs <pod-name>` for application startup errors.
 
+```bash
+# Investigate health check failures
+kubectl logs <pod-name>
+kubectl describe pod <pod-name>
+# Look for "Unhealthy" events in the pod description
+```
+
 **HPA not scaling properly**: Ensure metrics-server is running with `kubectl top nodes` and verify that your pods have resource requests defined. HPA requires resource requests to calculate utilization percentages.
 
-**Container image pull failures**: Verify that your image exists in Google Container Registry with `gcloud container images list-tags gcr.io/$PROJECT_ID/sre-demo-app` and ensure the deployment.yaml references the correct image path.
+```bash
+# Debug HPA issues
+kubectl top nodes
+kubectl describe hpa sre-demo-hpa
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/pods
+```
+
+**Container image pull failures**: Verify that your image exists in Artifact Registry and ensure the deployment.yaml references the correct image path.
+
+```bash
+# Check image availability
+gcloud artifacts docker images list us-central1-docker.pkg.dev/$PROJECT_ID/sre-demo-app
+kubectl describe pod <pod-name>
+# Look for "ErrImagePull" or "ImagePullBackOff" in events
+```
 
 ### Advanced Troubleshooting
 
-**Debugging networking issues**: Use `kubectl exec -it <pod-name> -- /bin/bash` to access a pod and test internal connectivity with `curl` commands to other pods or services.
+**Debugging networking issues**: Use `kubectl exec` to access a pod and test internal connectivity with `curl` commands to other pods or services.
+
+```bash
+# Test pod-to-pod connectivity
+kubectl exec -it <pod-name> -- /bin/bash
+# Inside the pod:
+curl http://sre-demo-headless:8080/health
+curl http://kubernetes.default.svc.cluster.local
+```
 
 **Investigating resource constraints**: Check node resource usage with `kubectl describe nodes` and pod resource usage with `kubectl top pods --containers` to identify resource bottlenecks.
 
+```bash
+# Analyze resource usage
+kubectl describe nodes
+kubectl top pods --containers
+kubectl get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].resources}{"\n"}{end}'
+```
+
 **Analyzing autoscaling decisions**: Review HPA events with `kubectl describe hpa sre-demo-hpa` and check metrics history to understand scaling trigger points.
+
+```bash
+# Debug autoscaling behavior
+kubectl describe hpa sre-demo-hpa
+kubectl get hpa sre-demo-hpa -o yaml
+# Check the currentMetrics section for actual usage values
+```
+
+### When Things Go Wrong
+
+**Complete deployment reset** (if needed):
+```bash
+# Delete all resources and redeploy
+kubectl delete -f k8s/
+./scripts/deploy.sh
+```
+
+**Check cluster health**:
+```bash
+# Verify cluster is operational
+kubectl cluster-info
+kubectl get nodes
+kubectl get pods --all-namespaces
+```
 
 ---
 
 ## Next Steps
 
 You have successfully deployed a production-ready SRE application to Google Kubernetes Engine with proper orchestration, scaling, and monitoring integration. You've implemented health checks that enable Kubernetes self-healing, configured resource management for efficient cluster utilization, established horizontal pod autoscaling based on resource metrics, and verified that all observability features work correctly in a distributed environment.
+
+### What You've Accomplished
+
+**Infrastructure Automation**: Your application deploys consistently across environments with declarative configuration, eliminating manual deployment variations.
+**Reliability Engineering**: Health checks and self-healing ensure applications recover automatically from failures without human intervention.
+**Performance Management**: Resource requests and limits optimize both application performance and cluster efficiency.
+**Scalability Foundation**: HPA provides automatic capacity management that responds to demand without over-provisioning resources.
+**Observability Integration**: Metrics, logs, and health endpoints provide comprehensive visibility into application behavior in distributed environments.
+
+### Prepare for Exercise 4
 
 **Proceed to [Exercise 4](../exercise4/)** where you will implement comprehensive monitoring and alerting using Google Cloud Operations, create custom dashboards for your Kubernetes application, configure intelligent alerting based on SLIs and SLOs, and establish incident response workflows that integrate with your deployed application.
 
