@@ -8,179 +8,39 @@ metadata:
 data:
   alertmanager.yml: |
     global:
-      smtp_smarthost: 'smtp.gmail.com:587'
-      smtp_from: 'alerts@your-domain.com'
-      smtp_auth_username: 'alerts@your-domain.com'
-      smtp_auth_password: 'your-app-password'
-      
-    # Define notification templates
-    templates:
-    - '/etc/alertmanager/templates/*.tmpl'
+      resolve_timeout: 5m
 
-    # Routing configuration
     route:
       group_by: ['alertname', 'cluster', 'service']
       group_wait: 10s
       group_interval: 10s
       repeat_interval: 1h
-      receiver: 'web.hook.default'
+      receiver: 'console-receiver'
       routes:
-      # Critical alerts - immediate notification
       - match:
           severity: critical
-        receiver: 'critical-alerts'
+        receiver: 'critical-console'
         group_wait: 0s
         group_interval: 5m
         repeat_interval: 15m
-        continue: true
-      
-      # Warning alerts - batched notification
       - match:
           severity: warning
-        receiver: 'warning-alerts'
+        receiver: 'warning-console'
         group_wait: 5m
         group_interval: 10m
         repeat_interval: 4h
-        continue: true
-      
-      # SLO burn rate alerts - specialized handling
-      - match:
-          alert_type: slo_burn_rate
-        receiver: 'slo-alerts'
-        group_wait: 1m
-        group_interval: 5m
-        repeat_interval: 1h
-        continue: true
-        
-      # Info alerts - daily digest
-      - match:
-          severity: info
-        receiver: 'info-digest'
-        group_wait: 1h
-        group_interval: 24h
-        repeat_interval: 24h
 
-    # Inhibition rules to reduce noise
     inhibit_rules:
-    # ServiceUnavailable inhibits other alerts for same service
     - source_match:
         alertname: ServiceUnavailable
       target_match:
         service: sre-demo-app
       equal: ['service']
-      
-    # Critical alerts inhibit warning alerts for same service
-    - source_match:
-        severity: critical
-      target_match:
-        severity: warning
-      equal: ['service', 'alertname']
 
-    # Alert receivers and notification channels
     receivers:
-    - name: 'web.hook.default'
-      webhook_configs:
-      - url: 'http://localhost:5001/webhook'
-        
-    - name: 'critical-alerts'
-      email_configs:
-      - to: 'sre-team@your-domain.com'
-        subject: '🚨 CRITICAL: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
-        body: |
-          {{ range .Alerts }}
-          Alert: {{ .Annotations.summary }}
-          Description: {{ .Annotations.description }}
-          Service: {{ .Labels.service }}
-          Severity: {{ .Labels.severity }}
-          Runbook: {{ .Annotations.runbook_url }}
-          
-          Time: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
-          {{ end }}
-        headers:
-          priority: 'high'
-      
-      slack_configs:
-      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
-        channel: '#sre-alerts'
-        title: '🚨 Critical Alert'
-        text: |
-          {{ range .Alerts }}
-          *Alert:* {{ .Annotations.summary }}
-          *Service:* {{ .Labels.service }}
-          *Description:* {{ .Annotations.description }}
-          *Runbook:* {{ .Annotations.runbook_url }}
-          {{ end }}
-        
-    - name: 'warning-alerts'
-      email_configs:
-      - to: 'sre-team@your-domain.com'
-        subject: '⚠️  WARNING: {{ .GroupLabels.service }} - {{ .GroupLabels.alertname }}'
-        body: |
-          {{ range .Alerts }}
-          Alert: {{ .Annotations.summary }}
-          Description: {{ .Annotations.description }}
-          Service: {{ .Labels.service }}
-          Severity: {{ .Labels.severity }}
-          Runbook: {{ .Annotations.runbook_url }}
-          
-          Time: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
-          {{ end }}
-          
-      slack_configs:
-      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
-        channel: '#sre-warnings'
-        title: '⚠️  Warning Alert'
-        text: |
-          {{ range .Alerts }}
-          *Alert:* {{ .Annotations.summary }}
-          *Service:* {{ .Labels.service }}
-          *Description:* {{ .Annotations.description }}
-          {{ end }}
-        
-    - name: 'slo-alerts'
-      email_configs:
-      - to: 'sre-team@your-domain.com'
-        subject: '📊 SLO Alert: {{ .GroupLabels.service }} error budget consumption'
-        body: |
-          {{ range .Alerts }}
-          SLO Alert: {{ .Annotations.summary }}
-          Description: {{ .Annotations.description }}
-          Service: {{ .Labels.service }}
-          
-          This indicates your error budget is being consumed rapidly.
-          Consider:
-          1. Investigate the root cause
-          2. Implement immediate mitigation
-          3. Review recent deployments
-          4. Check dependency health
-          
-          Runbook: {{ .Annotations.runbook_url }}
-          Time: {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
-          {{ end }}
-          
-      slack_configs:
-      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
-        channel: '#sre-slo'
-        title: '📊 SLO Budget Alert'
-        text: |
-          {{ range .Alerts }}
-          *SLO Alert:* {{ .Annotations.summary }}
-          *Service:* {{ .Labels.service }}
-          *Error Budget Impact:* High
-          {{ end }}
-        
-    - name: 'info-digest'
-      email_configs:
-      - to: 'sre-team@your-domain.com'
-        subject: '📋 Daily SRE Digest - {{ .GroupLabels.service }}'
-        body: |
-          Daily digest of informational alerts:
-          
-          {{ range .Alerts }}
-          - {{ .Annotations.summary }} ({{ .StartsAt.Format "15:04" }})
-          {{ end }}
-          
-          This is an automated digest of non-urgent events.
+    - name: 'console-receiver'
+    - name: 'critical-console'
+    - name: 'warning-console'
 
 ---
 apiVersion: v1
@@ -190,63 +50,4 @@ metadata:
   namespace: default
 type: Opaque
 stringData:
-  # Replace these with actual credentials
-  slack_webhook_url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
-  email_password: "your-app-specific-password"
-  
----
-# Alert notification templates
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: alertmanager-templates
-  namespace: default
-data:
-  default.tmpl: |
-    {{ define "slack.default.title" }}
-    [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] 
-    {{ .GroupLabels.SortedPairs.Values | join " " }} 
-    {{ if gt (len .GroupLabels) 0 }}({{ .GroupLabels.service }}){{ end }}
-    {{ end }}
-    
-    {{ define "slack.default.text" }}
-    {{ range .Alerts }}
-    {{ if .Annotations.summary }}*Alert:* {{ .Annotations.summary }}{{ end }}
-    {{ if .Annotations.description }}*Description:* {{ .Annotations.description }}{{ end }}
-    {{ if .Labels.severity }}*Severity:* {{ .Labels.severity }}{{ end }}
-    {{ if .Annotations.runbook_url }}*Runbook:* <{{ .Annotations.runbook_url }}|:books: Runbook>{{ end }}
-    *Time:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
-    ---
-    {{ end }}
-    {{ end }}
-    
-    {{ define "email.default.subject" }}
-    [{{ .Status | toUpper }}] {{ .GroupLabels.service }}: {{ .GroupLabels.alertname }}
-    {{ end }}
-    
-    {{ define "email.default.html" }}
-    <html>
-    <head><title>SRE Alert Notification</title></head>
-    <body>
-    <h2>SRE Alert Notification</h2>
-    
-    {{ range .Alerts }}
-    <div style="margin: 20px 0; padding: 15px; border-left: 5px solid 
-    {{ if eq .Labels.severity "critical" }}#d32f2f{{ else if eq .Labels.severity "warning" }}#f57c00{{ else }}#1976d2{{ end }};">
-    
-    <h3>{{ .Annotations.summary }}</h3>
-    <p><strong>Service:</strong> {{ .Labels.service }}</p>
-    <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
-    <p><strong>Description:</strong> {{ .Annotations.description }}</p>
-    <p><strong>Time:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}</p>
-    {{ if .Annotations.runbook_url }}
-    <p><strong>Runbook:</strong> <a href="{{ .Annotations.runbook_url }}">{{ .Annotations.runbook_url }}</a></p>
-    {{ end }}
-    
-    </div>
-    {{ end }}
-    
-    <p><em>This is an automated alert from the SRE monitoring system.</em></p>
-    </body>
-    </html>
-    {{ end }}
+  placeholder: "educational-environment"
