@@ -503,77 +503,14 @@ deployment.apps/sre-demo-app condition met
 
 ---
 
-## Understanding Alert Quality and Troubleshooting
+### Understanding Alert Effectiveness
 
-Alert system reliability depends on proper configuration of complex interactions between Prometheus, Alertmanager, and application instrumentation. This section addresses common alerting problems and demonstrates the troubleshooting skills required for production SRE work.
+Your chaos testing in Step 11 demonstrated the fundamental principles of alert quality:
+- **Signal-to-noise ratio**: Alerts fired when users were actually impacted
+- **Time-to-detection**: Alerts triggered within acceptable timeframes
+- **Actionable information**: Alerts provided clear indication of the problem
 
-### Implement Multi-Window, Multi-Burn-Rate Alerts
-
-The alerting rules you deployed include advanced SLO alerting that balances sensitivity with noise reduction:
-
-**Multi-burn-rate alerting** uses different time windows to detect both fast-developing and slow-developing problems:
-
-- **Fast burn rate** (14.4x normal): Detects severe problems that will exhaust error budget in <2 hours
-- **Slow burn rate** (6x normal): Identifies sustained issues that will exhaust error budget in 6+ hours
-
-**Check advanced alerting rules:**
-
-```bash
-# Examine SLO burn rate alert configuration
-grep -A 10 "AvailabilitySLO" k8s/alerting/prometheus-rules.yaml
-```
-
-### Error Budget Policy Implementation
-
-Implement error budget policies that guide development and operational decisions:
-
-```bash
-# Calculate current error budget status
-echo "=== Error Budget Analysis ==="
-
-# Query current availability (using available data as proxy)
-availability=$(curl -s "http://$PROMETHEUS_IP:9090/api/v1/query?query=sum(rate(http_requests_total{status_code!~\"5..\"}[24h]))/sum(rate(http_requests_total[24h]))*100" | jq -r '.data.result[0].value[1] // "99.8"')
-
-echo "Current availability: $availability%"
-
-# Calculate error budget consumption for 99.5% SLO
-error_budget_used=$(python3 -c "print(max(0, 100 - float('$availability')))")
-error_budget_remaining=$(python3 -c "print(max(0, 0.5 - float('$error_budget_used')))")
-
-echo "Error budget used: $error_budget_used%"
-echo "Error budget remaining: $error_budget_remaining%"
-
-# Determine operational posture
-if (( $(python3 -c "print(1 if float('$error_budget_remaining') > 0.25 else 0)") )); then
-    echo "Operational posture: NORMAL - Sufficient error budget"
-else
-    echo "Operational posture: CAUTIOUS - Review deployment practices"
-fi
-```
-
-**Error budget policies provide objective criteria for:**
-- **Development velocity decisions**: When to proceed with risky deployments
-- **Operational focus**: When to prioritize reliability over new features
-- **Resource allocation**: When to invest in reliability improvements
-
-### Alert Quality Metrics
-
-Monitor alert effectiveness over time:
-
-```bash
-# Check current alert status
-curl -s "http://$PROMETHEUS_IP:9090/api/v1/query?query=ALERTS" | jq -r '.data.result[] | "\(.metric.alertname): \(.metric.alertstate) (\(.metric.severity))"'
-
-# Count alerts by severity
-echo "Alert summary:"
-curl -s "http://$PROMETHEUS_IP:9090/api/v1/query?query=ALERTS" | jq -r '.data.result[].metric.severity' | sort | uniq -c
-```
-
-**Alert quality indicators:**
-- **Signal-to-noise ratio**: Percentage of alerts that require action
-- **Time-to-detection**: How quickly alerts fire when problems occur
-- **False positive rate**: Alerts that fire without genuine problems
-- **Coverage**: Whether all user-impacting problems trigger alerts
+In production environments, SRE teams monitor these same metrics to ensure alerting systems remain effective over time.
 
 ---
 
