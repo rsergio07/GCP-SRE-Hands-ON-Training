@@ -12,9 +12,9 @@ data:
     - name: sre-demo-critical
       interval: 30s
       rules:
-      # Service Unavailable - Critical
+      # Service Unavailable - Critical - FIXED to target only sre-demo-app pods
       - alert: ServiceUnavailable
-        expr: up{job="sre-demo-app"} == 0
+        expr: absent(up{job="sre-demo-app", app="sre-demo-app"} == 1)
         for: 1m
         labels:
           severity: critical
@@ -22,15 +22,15 @@ data:
           service: sre-demo-app
         annotations:
           summary: "SRE Demo App service is unavailable"
-          description: "The SRE Demo App service has been unavailable for more than 1 minute. No metrics are being received."
+          description: "No healthy sre-demo-app instances are running. All application pods are down."
           runbook_url: "https://github.com/your-org/runbooks/blob/main/sre-demo-app/unavailable.md"
           
       # High Error Rate - Critical  
       - alert: HighErrorRate
         expr: |
           (
-            sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
-            sum(rate(http_requests_total[5m]))
+            sum(rate(http_requests_total{app="sre-demo-app",status_code=~"5.."}[5m])) /
+            sum(rate(http_requests_total{app="sre-demo-app"}[5m]))
           ) * 100 > 5
         for: 2m
         labels:
@@ -46,7 +46,7 @@ data:
       - alert: ExtremeLatency
         expr: |
           histogram_quantile(0.95, 
-            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+            sum(rate(http_request_duration_seconds_bucket{app="sre-demo-app"}[5m])) by (le)
           ) > 2.0
         for: 5m
         labels:
@@ -66,8 +66,8 @@ data:
       - alert: ElevatedErrorRate
         expr: |
           (
-            sum(rate(http_requests_total{status_code=~"5.."}[5m])) /
-            sum(rate(http_requests_total[5m]))
+            sum(rate(http_requests_total{app="sre-demo-app",status_code=~"5.."}[5m])) /
+            sum(rate(http_requests_total{app="sre-demo-app"}[5m]))
           ) * 100 > 1
         for: 5m
         labels:
@@ -83,7 +83,7 @@ data:
       - alert: HighLatency
         expr: |
           histogram_quantile(0.95, 
-            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+            sum(rate(http_request_duration_seconds_bucket{app="sre-demo-app"}[5m])) by (le)
           ) > 0.8
         for: 5m
         labels:
@@ -99,8 +99,8 @@ data:
       - alert: BusinessOperationFailures
         expr: |
           (
-            sum(rate(business_operations_total{status="success"}[5m])) /
-            sum(rate(business_operations_total[5m]))
+            sum(rate(business_operations_total{app="sre-demo-app",status="success"}[5m])) /
+            sum(rate(business_operations_total{app="sre-demo-app"}[5m]))
           ) * 100 < 95
         for: 3m
         labels:
@@ -154,8 +154,8 @@ data:
       - alert: AvailabilitySLOFastBurn
         expr: |
           (
-            sum(rate(http_requests_total{status_code=~"5.."}[1h])) /
-            sum(rate(http_requests_total[1h]))
+            sum(rate(http_requests_total{app="sre-demo-app",status_code=~"5.."}[1h])) /
+            sum(rate(http_requests_total{app="sre-demo-app"}[1h]))
           ) > (14.4 * 0.005)  # 14.4x burn rate for 99.5% SLO
         for: 2m
         labels:
@@ -172,8 +172,8 @@ data:
       - alert: AvailabilitySLOSlowBurn
         expr: |
           (
-            sum(rate(http_requests_total{status_code=~"5.."}[6h])) /
-            sum(rate(http_requests_total[6h]))
+            sum(rate(http_requests_total{app="sre-demo-app",status_code=~"5.."}[6h])) /
+            sum(rate(http_requests_total{app="sre-demo-app"}[6h]))
           ) > (6 * 0.005)  # 6x burn rate for 99.5% SLO
         for: 15m
         labels:
@@ -226,7 +226,7 @@ data:
       # Deployment Events - Info
       - alert: DeploymentEvent
         expr: |
-          changes(application_info[10m]) > 0
+          changes(application_info{app="sre-demo-app"}[10m]) > 0
         for: 0s
         labels:
           severity: info
@@ -239,7 +239,7 @@ data:
       # Low Traffic - Info
       - alert: LowTraffic
         expr: |
-          sum(rate(http_requests_total[5m])) < 0.1
+          sum(rate(http_requests_total{app="sre-demo-app"}[5m])) < 0.1
         for: 30m
         labels:
           severity: info
