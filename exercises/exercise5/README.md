@@ -59,7 +59,7 @@ Note: This exercise builds directly on the monitoring data and dashboards from E
 
 **Essential Watching** (20 minutes):
 - [SRE Fundamentals: SLIs, SLAs and SLOs](https://www.youtube.com/watch?v=tEylFyxbDLE) by Google Cloud Tech - Official SRE concepts
-- [Alerting best practices](https://www.youtube.com/watch?v=K658JEZUGF4) by Google Cloud Tech – Straightforward alerting insights
+- [Alerting best practices](https://www.youtube.com/watch?v=AmYWMLv4h-0) by Google Cloud Tech – Straightforward alerting insights
 
 **Reference Documentation**:
 - [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/) - Alerting philosophy
