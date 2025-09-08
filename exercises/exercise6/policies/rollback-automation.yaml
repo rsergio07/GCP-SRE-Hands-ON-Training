@@ -1,0 +1,155 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rollback-automation
+  namespace: default
+  labels:
+    app: sre-demo-app
+    component: rollback-automation
+spec:
+  groups:
+  - name: rollback.triggers
+    interval: 30s
+    rules:
+    
+    # Immediate rollback triggers for critical SLO violations
+    - alert: TriggerImmediateRollback_Availability
+      expr: |
+        (
+          sum(rate(http_requests_total{status_code!~"5.."}[5m])) / 
+          sum(rate(http_requests_total[5m])) * 100
+        ) < 99.5
+      for: 2m
+      labels:
+        severity: critical
+        action: rollback
+        trigger: availability_slo_violation
+        urgency: immediate
+      annotations:
+        summary: "Critical availability SLO violation - triggering rollback"
+        description: "Availability dropped to {{ $value }}% for 2+ minutes"
+        action: "Automated rollback initiated due to availability SLO violation"
+        
+    - alert: TriggerImmediateRollback_ErrorRate
+      expr: |
+        (
+          sum(rate(http_requests_total{status_code=~"5.."}[5m])) / 
+          sum(rate(http_requests_total[5m])) * 100
+        ) > 5
+      for: 1m
+      labels:
+        severity: critical
+        action: rollback
+        trigger: error_rate_spike
+        urgency: immediate
+      annotations:
+        summary: "Critical error rate spike - triggering rollback"
+        description: "Error rate spiked to {{ $value }}% for 1+ minutes"
+        action: "Automated rollback initiated due to error rate spike"
+        
+    # Delayed rollback triggers for sustained issues
+    - alert: TriggerDelayedRollback_Latency
+      expr: |
+        histogram_quantile(0.95, 
+          sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+        ) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        action: rollback
+        trigger: latency_slo_violation
+        urgency: delayed
+      annotations:
+        summary: "Sustained latency SLO violation - triggering rollback"
+        description: "P95 latency above 800ms for 5+ minutes: {{ $value }}s"
+        action: "Automated rollback initiated due to sustained latency violation"
+        
+    - alert: TriggerDelayedRollback_BusinessOperations
+      expr: |
+        (
+          sum(rate(business_operations_total{status="success"}[5m])) / 
+          sum(rate(business_operations_total[5m])) * 100
+        ) < 95
+      for: 3m
+      labels:
+        severity: critical
+        action: rollback
+        trigger: business_operations_failure
+        urgency: delayed
+      annotations:
+        summary: "Business operations failure - triggering rollback"
+        description: "Business success rate below 95% for 3+ minutes: {{ $value }}%"
+        action: "Automated rollback initiated due to business operations failure"
+
+    # Service health checks
+    - alert: TriggerRollback_ServiceDown
+      expr: |
+        up{job="sre-demo-app"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        action: rollback
+        trigger: service_down
+        urgency: immediate
+      annotations:
+        summary: "Service completely down - triggering rollback"
+        description: "Application instances are not responding to health checks"
+        action: "Automated rollback initiated due to service unavailability"
+
+  - name: rollback.inhibition
+    interval: 30s
+    rules:
+    
+    # Prevent multiple rollback triggers
+    - alert: RollbackInProgress
+      expr: |
+        (
+          time() - on() group_left() 
+          (ALERTS{alertname=~"TriggerImmediate.*|TriggerDelayed.*"} > 0)
+        ) < 600
+      labels:
+        severity: info
+        action: inhibit
+      annotations:
+        summary: "Rollback operation in progress"
+        description: "Preventing additional rollback triggers for 10 minutes"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rollback-automation-config
+  namespace: default
+  labels:
+    app: sre-demo-app
+    component: rollback-automation
+data:
+  # Rollback automation configuration
+  config.yaml: |
+    rollback:
+      # SLO thresholds that trigger rollback
+      thresholds:
+        availability_slo: 99.5      # percentage
+        latency_p95: 800           # milliseconds
+        error_rate: 5.0           # percentage
+        business_success: 95.0    # percentage
+        
+      # Timing configuration
+      timing:
+        check_interval: 30        # seconds between checks
+        max_violations: 3         # consecutive violations before rollback
+        rollback_timeout: 600     # seconds to wait for rollback completion
+        
+      # ArgoCD configuration
+      argocd:
+        namespace: argocd
+        application: sre-demo-gitops
+        
+      # Notification configuration
+      notifications:
+        enabled: true
+        channels:
+          - type: log
+            level: info
+          - type: prometheus
+            metric: rollback_events_total

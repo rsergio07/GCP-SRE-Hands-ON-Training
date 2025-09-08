@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sre-demo-gitops
+  namespace: argocd
+  labels:
+    app: sre-demo-app
+    environment: production
+    managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/YOUR_USERNAME/kubernetes-sre-cloud-native
+    targetRevision: HEAD
+    path: exercises/exercise6/k8s/gitops
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=false
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  revisionHistoryLimit: 10
+  
+  # Health check configuration
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+  
+  # Custom health checks for SRE application
+  info:
+    - name: "Monitoring"
+      value: "Prometheus metrics at /metrics"
+    - name: "Health Check"
+      value: "Application health at /health"
+    - name: "SLO Target"
+      value: "99.5% availability, 95% <500ms latency"
