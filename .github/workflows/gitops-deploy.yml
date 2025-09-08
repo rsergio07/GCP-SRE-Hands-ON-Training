@@ -141,17 +141,17 @@ jobs:
     - name: Update Kubernetes manifests
       run: |
         # Update deployment image in GitOps directory
-        sed -i "s|us-central1-docker.pkg.dev/.*/sre-demo-app/sre-demo-app:.*|${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/sre-demo-app/${{ env.IMAGE_NAME }}:$NEW_IMAGE_TAG|g" exercises/exercise6/k8s/gitops/deployment.yaml
+        sed -i "s|image: us-central1-docker\.pkg\.dev[^[:space:]]*|image: ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/sre-demo-app/${{ env.IMAGE_NAME }}:$NEW_IMAGE_TAG|g" exercises/exercise6/k8s/gitops/deployment.yaml
 
         # Update deployment timestamp
-        sed -i "s|deployment.timestamp:.*|deployment.timestamp: \"$TIMESTAMP\"|g" exercises/exercise6/k8s/gitops/deployment.yaml
+        sed -i "s|deployment\.timestamp: \"[^\"]*\"|deployment.timestamp: \"$TIMESTAMP\"|g" exercises/exercise6/k8s/gitops/deployment.yaml
 
         # Update version labels
-        sed -i "s|version: v.*|version: v1.2.0-${{ github.sha }}|g" exercises/exercise6/k8s/gitops/deployment.yaml
+        sed -i "s|version: v[^[:space:]]*|version: v1.2.0-${{ github.sha }}|g" exercises/exercise6/k8s/gitops/deployment.yaml
 
         # Update environment variables
-        sed -i "s|value: \"{{ .Values.gitCommit | default \"unknown\" }}\"|value: \"${{ github.sha }}\"|g" exercises/exercise6/k8s/gitops/deployment.yaml
-        sed -i "s|value: \"{{ .Values.deploymentId | default \"gitops\" }}\"|value: \"$DEPLOYMENT_ID\"|g" exercises/exercise6/k8s/gitops/deployment.yaml
+        sed -i "s|value: \"{{ \.Values\.gitCommit[^\"]*\"|value: \"${{ github.sha }}\"|g" exercises/exercise6/k8s/gitops/deployment.yaml
+        sed -i "s|value: \"{{ \.Values\.deploymentId[^\"]*\"|value: \"$DEPLOYMENT_ID\"|g" exercises/exercise6/k8s/gitops/deployment.yaml
 
     - name: Commit and push changes
       run: |
