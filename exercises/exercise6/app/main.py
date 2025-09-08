@@ -359,6 +359,7 @@ def internal_error(error):
     }), 500
 
 if __name__ == '__main__':
+
     # Log application startup
     logger.info(
         "Starting GitOps-deployed application",
