@@ -11,16 +11,17 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
-  
+
   source:
     repoURL: https://github.com/rsergio07/kubernetes-sre-cloud-native
     targetRevision: HEAD
     path: exercises/exercise6/k8s/gitops
-  
+    kustomize: {}
+
   destination:
     server: https://kubernetes.default.svc
     namespace: default
-  
+
   syncPolicy:
     automated:
       prune: true
@@ -36,17 +37,17 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-  
+
   revisionHistoryLimit: 10
-  
-  # Health check configuration
+
   ignoreDifferences:
     - group: apps
       kind: Deployment
+      name: sre-demo-app
       jsonPointers:
         - /spec/replicas
-  
-  # Custom health checks for SRE application
+        - /metadata/annotations/deployment.kubernetes.io~1revision
+
   info:
     - name: "Monitoring"
       value: "Prometheus metrics at /metrics"
