@@ -172,6 +172,19 @@ ArgoCD deployment takes 3-5 minutes. Wait until all pods show `Running` status b
 kubectl get pods -n argocd
 ```
 
+**Expected output:**
+
+```
+NAME                                               READY   STATUS    RESTARTS   AGE
+argocd-application-controller-0                    1/1     Running   0          79s
+argocd-applicationset-controller-5b75d899b-lb7n8   1/1     Running   0          64s
+argocd-dex-server-59746c9588-cwkcg                 1/1     Running   0          63s
+argocd-notifications-controller-5f96c56f77-s9ms7   1/1     Running   0          20m
+argocd-redis-56f98f7cd8-xv7gw                      1/1     Running   0          20m
+argocd-repo-server-546fb64cd4-zd4rc                1/1     Running   0          20m
+argocd-server-79b5565d68-fqljf                     1/1     Running   0          20m
+```
+
 **Access the ArgoCD web interface** using the URL from your output (accept the self-signed certificate). The interface provides visual representation of applications, deployment status, and synchronization history.
 
 **Test web interface access:**
@@ -202,7 +215,18 @@ argocd login $ARGOCD_IP --username admin --password $ARGOCD_PASSWORD --insecure
 Context '$ARGOCD_IP' updated
 ```
 
----
+**Note**: If you get ArgoCD CLI help text instead of a successful login, the environment variables may have been cleared. Re-export them:
+
+```bash
+# Re-export ArgoCD credentials if needed
+export ARGOCD_IP=$(kubectl get service argocd-server-lb -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+export ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+```
+
+```bash
+# Then retry the login
+argocd login $ARGOCD_IP --username admin --password $ARGOCD_PASSWORD --insecure
+```
 
 ## Implementing GitOps Deployment Pipelines
 
@@ -314,10 +338,6 @@ argocd app sync sre-demo-gitops
 ```bash
 # Verify sync completed successfully
 kubectl get pods -l app=sre-demo-app
-```
-
-```bash
-kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].image}'
 ```
 
 ---
