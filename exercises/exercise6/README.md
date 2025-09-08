@@ -9,6 +9,7 @@
 * [Understanding GitOps for SRE](#understanding-gitops-for-sre)
 * [Setting Up ArgoCD for Automated Deployments](#setting-up-argocd-for-automated-deployments)
 * [Implementing GitOps Deployment Pipelines](#implementing-gitops-deployment-pipelines)
+* [Exploring GitOps Operations](#exploring-gitops-operations)
 * [Deployment Safety Gates and SLO Validation](#deployment-safety-gates-and-slo-validation)
 * [Automated Rollback and Recovery](#automated-rollback-and-recovery)
 * [Testing End-to-End Pipeline Reliability](#testing-end-to-end-pipeline-reliability)
@@ -20,7 +21,7 @@
 
 ## Introduction
 
-In this exercise, you will implement production-ready CI/CD pipelines using GitOps principles with ArgoCD. You'll create automated deployment workflows that integrate with your monitoring infrastructure from Exercises 4-5, implement deployment safety gates based on SLO compliance, and establish automated rollback capabilities that minimize Mean Time to Resolution (MTTR).
+In this exercise, you will implement production-ready GitOps principles using ArgoCD for automated deployment management. You'll establish declarative deployment workflows that integrate with your monitoring infrastructure from Exercises 4-5, implement deployment safety gates based on SLO compliance, and establish automated rollback capabilities that minimize Mean Time to Resolution (MTTR).
 
 This exercise demonstrates how modern SRE teams manage deployments with reliability, traceability, and minimal human intervention while maintaining service availability through automated validation and recovery procedures.
 
@@ -34,7 +35,7 @@ By completing this exercise, you will understand:
 - **ArgoCD Configuration**: How to deploy and configure ArgoCD for continuous deployment with proper security
 - **Deployment Safety Gates**: How to use SLO metrics to validate deployment success automatically
 - **Automated Rollback**: How to implement SLO-based rollback automation that responds to service degradation
-- **Pipeline Integration**: How to connect CI/CD pipelines with monitoring infrastructure for intelligent deployments
+- **Operational Benefits**: How GitOps provides audit trails, reduces manual effort, and improves deployment reliability
 - **Release Reliability**: How to coordinate releases with incident response and monitoring systems
 
 ---
@@ -211,7 +212,7 @@ Context '$ARGOCD_IP' updated
 
 ### Connecting Code Changes to Automated Deployments
 
-This section establishes the automated pipeline that connects your application code changes to deployment updates through GitOps principles, integrating with your existing GitHub Actions workflow.
+This section establishes the GitOps deployment pipeline that connects your application state to cluster deployment through declarative manifests, demonstrating the core principles of GitOps workflows.
 
 ### Step 2: Configure GitOps Repository Structure
 
@@ -258,7 +259,7 @@ repoURL: https://github.com/your-actual-username/kubernetes-sre-cloud-native
 # CURRENT:
 image: gcr.io/PROJECT_ID/sre-demo-app:latest
 
-# SHOULD BE (replace with your actual Google Cloud Platform project ID):
+# SHOULD BE (replace with your actual registry path from previous exercises):
 image: us-central1-docker.pkg.dev/your-project-id/sre-demo-app/sre-demo-app:latest
 ```
 
@@ -289,7 +290,7 @@ Server:             https://kubernetes.default.svc
 Namespace:          default
 URL:                https://34.31.169.228/applications/sre-demo-gitops
 Source:
-- Repo:             https://github.com/rsergio07/kubernetes-sre-cloud-native
+- Repo:             https://github.com/your-username/kubernetes-sre-cloud-native
   Target:           HEAD
   Path:             exercises/exercise6/k8s/gitops
 SyncWindow:         Sync Allowed
@@ -305,7 +306,7 @@ apps   Deployment  default    sre-demo-app       OutOfSync  Progressing        d
 
 **Access the ArgoCD application view:**
 
-Navigate to the URL shown in the `argocd app get` output (e.g., `https://ARGOCD_IP URL/applications/sre-demo-gitops`).
+Navigate to the URL shown in the `argocd app get` output (e.g., `https://ARGOCD_IP/applications/sre-demo-gitops`).
 
 **Understanding ArgoCD Application Status**
 
@@ -339,91 +340,132 @@ kubectl get pods -l app=sre-demo-app
 kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].image}'
 ```
 
-**Note for students**: In production environments, automated sync typically occurs within 30-60 seconds. Development environments like Codespaces may require manual sync due to network latency and resource constraints.
+**Note**: In production environments, automated sync typically occurs within 30-60 seconds. Development environments like Codespaces may require manual sync due to network latency and resource constraints.
 
-**Step 4: Test GitOps Workflow with Safe Application Change**
+---
 
-This step demonstrates the complete GitOps pipeline by making a minimal, safe change to your application code and observing how it flows through the entire CI/CD system.
+## Exploring GitOps Operations
 
-### Understanding the GitOps Testing Strategy
+### Understanding GitOps Through Hands-On Exploration
 
-**Why we're testing with a small change:** GitOps workflows connect multiple systems (Git → GitHub Actions → Container Registry → ArgoCD → Kubernetes). Testing with a harmless modification validates that all components communicate correctly without risking application stability.
+This section focuses on understanding GitOps operations through direct interaction with ArgoCD, demonstrating how declarative configuration management works in practice without the complexity of full CI/CD automation.
 
-**The test change we'll make:** Adding a timestamped comment to your application configuration file. This triggers the build pipeline without affecting application behavior.
+### Step 4: Explore ArgoCD Interface and GitOps Concepts
 
-### Step 4A: Create Safe Test Change
+**Navigate to your ArgoCD application** and explore the GitOps interface:
 
-**Create a feature branch for testing:**
+**Application Overview**: View sync status, health indicators, and resource hierarchy to understand how ArgoCD visualizes your application state.
 
-```bash
-# Create a feature branch for testing
-git checkout -b exercise6-gitops-test
+**Resource Tree**: Examine how ArgoCD displays the relationships between Kubernetes resources (Deployment → ReplicaSet → Pods → Services).
 
-# Make a small change to test the pipeline
-echo "# GitOps deployment test - $(date)" >> app/config.py
-```
+**Sync Controls**: Understand the difference between manual and automatic synchronization options available in the interface.
 
-**What this command does:**
-- **Appends a Python comment** to `app/config.py` with current timestamp
-- **Creates a code change** that GitHub Actions will detect
-- **Doesn't modify application behavior** since it's just a comment
-- **Provides clear traceability** with the timestamp for tracking
+**History Tab**: Review deployment history and previous configurations to see how GitOps maintains change tracking.
 
-**Commit and push to trigger the test phase:**
+**Practice GitOps operations using ArgoCD CLI:**
 
 ```bash
-git add app/config.py
-git commit -m "test: GitOps pipeline validation"
-git push origin exercise6-gitops-test
+# View current application status
+argocd app get sre-demo-gitops
+
+# Trigger manual sync to ensure latest state
+argocd app sync sre-demo-gitops
+
+# Check sync history
+argocd app history sre-demo-gitops
+
+# View application details in YAML format
+argocd app get sre-demo-gitops -o yaml
 ```
 
-### Step 4B: Monitor GitHub Actions Execution
+### Step 5: Experiment with GitOps Configuration Changes
 
-**Navigate to your GitHub repository's Actions tab:**
-1. **Open your repository** in GitHub (`https://github.com/your-username/kubernetes-sre-cloud-native`)
-2. **Click the "Actions" tab** in the repository navigation
-3. **Look for the new workflow run** triggered by your push
-
-**What you should observe in the Actions interface:**
-
-**Workflow Trigger Details:**
-- **Run name:** Shows your commit message "test: GitOps pipeline validation"
-- **Branch:** `exercise6-gitops-test` 
-- **Trigger event:** `push` (from your git push command)
-- **Workflow file:** `.github/workflows/gitops-deploy.yml`
-
-**Job Execution for Feature Branch:**
-- **test-application job:** Runs code quality checks, unit tests, and build validation
-- **deploy-production job:** Skipped (only runs on main branch)
-- **Status indicators:** Green checkmarks for successful steps, red X for failures
-
-**Why this workflow behavior matters:**
-- **Feature branch protection:** Prevents accidental deployments to production
-- **Code validation:** Ensures changes don't break the application before merging
-- **Development safety:** Allows testing pipeline components without affecting live systems
-
-### Step 4C: Understanding the GitOps Safety Model
-
-**Branch-based deployment strategy:**
-- **Feature branches:** Run tests only, no deployment to production
-- **Main branch:** Triggers full deployment pipeline to production
-- **Pull request workflow:** Code review before production deployment
-
-**This demonstrates GitOps best practices:**
-- **Separation of concerns:** Testing separated from deployment
-- **Review gates:** Human approval before production changes
-- **Audit trails:** Complete history of what changed and when
-
-**Clean up the test branch:**
+**Make a controlled change to demonstrate GitOps workflow:**
 
 ```bash
-# Switch back to main and clean up
-git checkout main
-git branch -D exercise6-gitops-test
-git push origin --delete exercise6-gitops-test
+# Make a small, safe change to test GitOps sync
+sed -i 's/replicas: 2/replicas: 3/g' k8s/gitops/deployment.yaml
+
+# Verify the change
+grep "replicas:" k8s/gitops/deployment.yaml
 ```
 
-**Key learning outcomes:** You've validated that your GitOps pipeline can detect code changes, execute appropriate workflow steps based on branch policies, and maintain separation between testing and production deployment processes. This foundation ensures that when you make real application changes on the main branch, the complete deployment automation will function correctly.
+**Commit and observe GitOps automation:**
+
+```bash
+git add k8s/gitops/deployment.yaml
+git commit -m "gitops: Scale application to 3 replicas for testing"
+git push origin main
+```
+
+**Monitor ArgoCD detect and apply the change:**
+
+```bash
+# Watch ArgoCD sync the change (this may take 1-3 minutes)
+argocd app get sre-demo-gitops -w
+
+# Or check periodically
+watch -n 10 'argocd app get sre-demo-gitops'
+```
+
+**Observe the scaling operation:**
+
+```bash
+# Verify that pods scaled to 3 replicas
+kubectl get pods -l app=sre-demo-app
+
+# Check deployment status
+kubectl get deployment sre-demo-app
+```
+
+**Expected output:**
+```
+NAME                            READY   STATUS    RESTARTS   AGE
+sre-demo-app-74b756bb8b-abc12   1/1     Running   0          5m
+sre-demo-app-74b756bb8b-def34   1/1     Running   0          5m
+sre-demo-app-74b756bb8b-ghi56   1/1     Running   0          2m
+
+NAME           READY   UP-TO-DATE   AVAILABLE   AGE
+sre-demo-app   3/3     3            3           2h
+```
+
+**Explore the visual diff in ArgoCD web interface:**
+- Navigate to your application in the ArgoCD UI
+- Click on the Deployment resource
+- Review the "Last Sync" information showing what changed
+- Examine the "Desired Manifest" vs "Live Manifest" comparison
+
+### Step 6: Understand GitOps Rollback Capabilities
+
+**Test ArgoCD's rollback functionality:**
+
+```bash
+# View deployment history to see available revisions
+argocd app history sre-demo-gitops
+
+# Rollback to previous revision (before scaling)
+argocd app rollback sre-demo-gitops <previous-revision-id>
+
+# Watch the rollback process
+kubectl get pods -l app=sre-demo-app -w
+```
+
+**Key GitOps concepts demonstrated:**
+- **Declarative State Management**: Changes are defined in Git and applied automatically
+- **Audit Trail**: Complete history of changes with commit messages and timestamps
+- **Rollback Capability**: Easy reversion to previous known-good states
+- **Visual Operations**: Clear interface showing current vs desired state
+- **Automated Synchronization**: No manual kubectl commands required for deployments
+
+**Reset to desired state:**
+
+```bash
+# Reset replicas back to 2 for consistency
+sed -i 's/replicas: 3/replicas: 2/g' k8s/gitops/deployment.yaml
+git add k8s/gitops/deployment.yaml
+git commit -m "gitops: Reset to 2 replicas"
+git push origin main
+```
 
 ---
 
@@ -433,7 +475,7 @@ git push origin --delete exercise6-gitops-test
 
 This section implements safety mechanisms that prevent problematic deployments from degrading user experience by using your existing monitoring infrastructure to validate SLO compliance.
 
-### Step 5: Implement SLO-Based Deployment Validation
+### Step 7: Implement SLO-Based Deployment Validation
 
 Configure deployment validation that uses your Prometheus monitoring to ensure deployments maintain service reliability:
 
@@ -477,7 +519,7 @@ curl -s "http://$PROMETHEUS_IP:9090/api/v1/query?query=sum(rate(http_requests_to
 
 This confirms your availability SLO is currently at 100%, providing the baseline for deployment validation.
 
-### Step 6: Configure Automated Deployment Health Checks
+### Step 8: Configure Automated Deployment Health Checks
 
 Set up comprehensive health validation for new deployments:
 
@@ -514,7 +556,7 @@ chmod +x scripts/deployment-health-check.sh
 
 This section implements automated rollback systems that respond to SLO violations by reverting to known good application versions, minimizing user impact without requiring human intervention.
 
-### Step 7: Implement SLO-Based Rollback Automation
+### Step 9: Implement SLO-Based Rollback Automation
 
 Configure rollback automation that monitors SLO compliance and triggers recovery when deployments cause service degradation:
 
@@ -562,7 +604,7 @@ chmod +x scripts/rollback-automation.sh
 [TEST] Rollback automation logic validated successfully
 ```
 
-### Step 8: Test Rollback with Controlled Deployment Failure
+### Step 10: Test Rollback with Controlled Deployment Failure
 
 Simulate a deployment issue to validate rollback automation:
 
@@ -618,100 +660,53 @@ rm k8s/gitops/deployment-backup.yaml
 
 ### Validating Complete GitOps Workflow
 
-This section tests the complete GitOps pipeline from code change through deployment validation to ensure all components work together reliably.
+This section validates the complete GitOps workflow functionality including deployment management, monitoring integration, and operational procedures.
 
-### Step 9: Execute Full GitOps Deployment Test
+### Step 11: Verify Deployment Success and Monitoring Integration
 
-Test the complete workflow with a real application change:
-
-```bash
-# Make a meaningful change to demonstrate end-to-end workflow
-echo "GitOps_enabled = True  # Added $(date)" >> app/config.py
-```
+Confirm that your GitOps deployment is functioning correctly and monitoring continues to work:
 
 ```bash
-# Commit to main branch to trigger full pipeline
-git add app/config.py
-git commit -m "feat: Enable GitOps deployment workflow"
-git push origin main
-```
-
-**Monitor the complete pipeline execution:**
-
-```bash
-# Check GitHub Actions progress
-echo "Monitor GitHub Actions: https://github.com/$(git config --get remote.origin.url | cut -d: -f2 | cut -d. -f1)/actions"
-
-# Watch ArgoCD synchronization
-argocd app sync sre-demo-gitops --watch
-```
-
-**Expected pipeline flow:**
-1. **GitHub Actions** builds new container image with updated code
-2. **Manifest update** automatically updates deployment.yaml with new image tag
-3. **ArgoCD detects** Git changes and syncs new configuration
-4. **Deployment validation** confirms SLO compliance
-5. **Application update** completes successfully
-
-### Step 10: Verify Deployment Success and Monitoring Integration
-
-Confirm that the deployment completed successfully and monitoring continues to function:
-
-```bash
-# Verify new deployment is running
+# Verify current deployment is running correctly
 kubectl get pods -l app=sre-demo-app
 kubectl describe deployment sre-demo-app | grep Image:
 ```
 
-**Expected output showing new image:**
-```
-NAME                            READY   STATUS    RESTARTS   AGE
-sre-demo-app-7b8c9d3f5g-abc12   1/1     Running   0          3m
-sre-demo-app-7b8c9d3f5g-def34   1/1     Running   0          3m
-
-    Image:      us-central1-docker.pkg.dev/your-project/sre-demo-app/sre-demo-app:latest-abc123ef
-```
-
-**Test application functionality with new deployment:**
+**Test application functionality:**
 
 ```bash
 # Verify application endpoints work correctly
 export EXTERNAL_IP=$(kubectl get service sre-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
 curl http://$EXTERNAL_IP/health
-curl http://$EXTERNAL_IP/metrics | grep http_requests_total | head -5
+curl http://$EXTERNAL_IP/deployment
 ```
 
 **Expected output:**
 ```
 {"status":"ready","timestamp":1756767389.123456}
 
-http_requests_total{endpoint="health_check",method="GET",status="200"} 1234.0
-http_requests_total{endpoint="index",method="GET",status="200"} 567.0
+{
+  "deployment_method": "gitops",
+  "version": "1.2.0",
+  "environment": "production",
+  "features": {
+    "automated_rollback": true,
+    "slo_validation": true,
+    "blue_green_ready": true,
+    "monitoring_integration": true
+  }
+}
 ```
 
-**Verify monitoring continues to collect metrics from new deployment:**
+**Verify monitoring continues to collect metrics:**
 
 ```bash
-# Check that Prometheus is scraping new pods
+# Check that Prometheus is scraping application metrics
 curl -s "http://$PROMETHEUS_IP:9090/api/v1/query?query=up{job=\"sre-demo-app\"}" | jq '.data.result'
 ```
 
-**Expected output showing healthy targets:**
-```
-[
-  {
-    "metric": {
-      "__name__": "up",
-      "instance": "10.116.0.123:8080",
-      "job": "sre-demo-app"
-    },
-    "value": [1756767389, "1"]
-  }
-]
-```
-
-### Step 11: Validate GitOps Audit Trail and Operational Benefits
+### Step 12: Validate GitOps Audit Trail and Operational Benefits
 
 Examine the audit trail and operational improvements provided by GitOps:
 
@@ -722,10 +717,10 @@ git log --oneline -10
 
 **Expected output showing clear audit trail:**
 ```
-abc123ef feat: Enable GitOps deployment workflow
-def456gh restore: Fix deployment after rollback test
-ghi789jk test: Simulate deployment failure for rollback validation
-jkl012mn Initial GitOps configuration
+abc123ef restore: Fix deployment after rollback test
+def456gh test: Simulate deployment failure for rollback validation
+ghi789jk gitops: Reset to 2 replicas
+jkl012mn gitops: Scale application to 3 replicas for testing
 ```
 
 **Check ArgoCD application history:**
@@ -738,9 +733,9 @@ argocd app history sre-demo-gitops
 **Expected output:**
 ```
 ID  DATE                           REVISION
-10  2025-09-06 15:42:33 +0000 UTC  abc123ef (feat: Enable GitOps deployment workflow)
-9   2025-09-06 15:38:21 +0000 UTC  def456gh (restore: Fix deployment after rollback test)
-8   2025-09-06 15:35:18 +0000 UTC  ghi789jk (test: Simulate deployment failure)
+10  2025-09-06 15:42:33 +0000 UTC  abc123ef (restore: Fix deployment after rollback test)
+9   2025-09-06 15:38:21 +0000 UTC  def456gh (test: Simulate deployment failure)
+8   2025-09-06 15:35:18 +0000 UTC  ghi789jk (gitops: Reset to 2 replicas)
 ```
 
 **Demonstrate operational benefits:**
@@ -755,7 +750,7 @@ argocd app get sre-demo-gitops --output yaml | grep -A5 -B5 "syncPolicy\|health\
 - **Declarative State**: Current deployment state visible and version-controlled
 - **Automated Recovery**: Rollback procedures tested and validated
 - **Monitoring Integration**: SLO compliance validated automatically
-- **Reduced Manual Effort**: Deployments happen without human intervention
+- **Reduced Manual Effort**: Deployments managed through Git workflows
 
 ---
 
@@ -763,7 +758,7 @@ argocd app get sre-demo-gitops --output yaml | grep -A5 -B5 "syncPolicy\|health\
 
 By completing this exercise, you should be able to demonstrate:
 
-Your application deploys using GitOps principles with ArgoCD managing automated synchronization from Git. The deployment pipeline integrates with your monitoring infrastructure to validate SLO compliance before marking deployments successful. Automated rollback systems respond to deployment-related SLO violations by reverting to known good versions. The complete workflow provides audit trails, reduces manual deployment effort, and improves deployment reliability through automated validation and recovery.
+Your application deploys using GitOps principles with ArgoCD managing automated synchronization from Git. You understand how to make declarative configuration changes that ArgoCD automatically applies to your cluster. The deployment pipeline integrates with your monitoring infrastructure to validate SLO compliance. Automated rollback systems respond to deployment-related SLO violations by reverting to known good versions. The complete workflow provides audit trails, reduces manual deployment effort, and improves deployment reliability.
 
 ### Verification Questions
 
@@ -777,6 +772,8 @@ Test your understanding by answering these questions:
 
 4. **How would** you modify the rollback automation to be more or less sensitive to service degradation?
 
+5. **What are** the key differences between imperative and declarative deployment management?
+
 ---
 
 ## Troubleshooting
@@ -787,11 +784,11 @@ Test your understanding by answering these questions:
 
 **Deployment validation failing**: Verify SLO queries work in Prometheus with `curl "http://$PROMETHEUS_IP:9090/api/v1/query?query=<your_slo_query>"` and check that your application generates metrics correctly. Review validation thresholds in the deployment health check script.
 
-**GitHub Actions workflow not triggering**: Confirm that the enhanced workflow file is in the correct `.github/workflows/` directory and that webhook delivery is working from GitHub to trigger builds on push events.
-
 **Rollback automation not activating**: Check Prometheus alert rules with `kubectl logs -l app=prometheus | grep "rule evaluation"` and verify that alert conditions match actual deployment failure scenarios.
 
 **ArgoCD application stuck in OutOfSync**: Check for resource conflicts with `argocd app get sre-demo-gitops -o yaml` and verify that ArgoCD has necessary RBAC permissions for the target namespace.
+
+**Manual sync required repeatedly**: This is common in development environments like Codespaces due to network latency. Use `argocd app sync sre-demo-gitops` when needed.
 
 ### Advanced Troubleshooting
 
@@ -805,7 +802,7 @@ Test your understanding by answering these questions:
 
 ## Next Steps
 
-You have successfully implemented production-ready CI/CD pipelines using GitOps principles with automated deployment validation and rollback capabilities. You've established ArgoCD for declarative deployment management, created safety gates using SLO metrics, implemented automated rollback systems based on monitoring data, and built comprehensive audit trails for deployment operations.
+You have successfully implemented GitOps principles using ArgoCD for automated deployment management with integrated monitoring and rollback capabilities. You've established declarative deployment workflows, created safety gates using SLO metrics, implemented automated rollback systems based on monitoring data, and built comprehensive audit trails for deployment operations.
 
 **Proceed to [Exercise 7](../exercise7/)** where you will implement comprehensive production readiness including security hardening, cost optimization strategies, disaster recovery procedures, and compliance frameworks that build upon your reliable deployment infrastructure.
 
