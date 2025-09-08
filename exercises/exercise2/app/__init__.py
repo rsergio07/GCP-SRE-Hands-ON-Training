@@ -1,9 +1,17 @@
 """
-SRE Demo Application Package
+SRE-Instrumented Flask Application with GitOps Support
 
-This package contains a Flask application designed for SRE training,
-including Prometheus metrics, health checks, and structured logging.
+A demonstration application that implements Site Reliability Engineering
+best practices including structured logging, Prometheus metrics, proper
+health check endpoints for Kubernetes deployment, and GitOps deployment
+tracking for automated CI/CD workflows.
+
+Version 1.2.0 adds GitOps deployment support with:
+- Deployment tracking metrics
+- Enhanced observability for CI/CD pipelines
+- Rollback automation integration
+- Blue-green deployment readiness
 """
 
-__version__ = "1.0.0"
-__author__ = "SRE Academy"
+__version__ = "1.2.0"
+__author__ = "SRE Course"
