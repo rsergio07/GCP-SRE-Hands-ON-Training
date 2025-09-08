@@ -328,6 +328,19 @@ The ArgoCD web interface shows your GitOps deployment in action. Key status indi
 
 **This demonstrates GitOps declarative management** - ArgoCD continuously monitors your Git repository and ensures the cluster state matches your defined configuration. The visual interface provides real-time insight into deployment health and synchronization status that would require multiple kubectl commands to gather manually.
 
+**If ArgoCD shows OutOfSync:**
+
+```bash
+# Trigger manual sync (especially useful in development environments)
+argocd app sync sre-demo-gitops
+
+# Verify sync completed successfully
+kubectl get pods -l app=sre-demo-app
+kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+```
+
+**Note for students**: In production environments, automated sync typically occurs within 30-60 seconds. Development environments like Codespaces may require manual sync due to network latency and resource constraints.
+
 ### Step 4: Enhance GitHub Actions for GitOps Integration
 
 Review and deploy the enhanced CI/CD pipeline that integrates with ArgoCD:

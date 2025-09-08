@@ -36,4 +36,4 @@ class Config:
             'deployment_method': cls.DEPLOYMENT_METHOD,
             'git_commit': cls.GIT_COMMIT,
             'deployment_id': cls.DEPLOYMENT_ID
-        }
+        }# GitOps deployment test - Mon Sep  8 15:27:35 UTC 2025
