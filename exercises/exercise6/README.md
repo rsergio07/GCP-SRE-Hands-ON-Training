@@ -328,26 +328,32 @@ The ArgoCD web interface shows your GitOps deployment in action. Key status indi
 
 **This demonstrates GitOps declarative management** - ArgoCD continuously monitors your Git repository and ensures the cluster state matches your defined configuration. The visual interface provides real-time insight into deployment health and synchronization status that would require multiple kubectl commands to gather manually.
 
-### Step 4: Enhance GitHub Actions for GitOps Integration
-
-Review and deploy the enhanced CI/CD pipeline that integrates with ArgoCD:
+**If ArgoCD shows OutOfSync:**
 
 ```bash
-# Examine the enhanced GitHub Actions workflow
-cat .github/workflows/gitops-deploy.yml
+# Trigger manual sync (especially useful in development environments)
+argocd app sync sre-demo-gitops
+
+# Verify sync completed successfully
+kubectl get pods -l app=sre-demo-app
+kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].image}'
 ```
 
-**Key enhancements for GitOps:**
+**Note for students**: In production environments, automated sync typically occurs within 30-60 seconds. Development environments like Codespaces may require manual sync due to network latency and resource constraints.
 
-**Container Build Stage** builds and pushes images to Google Container Registry with proper tagging based on Git commits.
+**Step 4: Test GitOps Workflow with Safe Application Change**
 
-**Manifest Update Stage** automatically updates Kubernetes manifests with new image tags and commits changes to trigger ArgoCD synchronization.
+This step demonstrates the complete GitOps pipeline by making a minimal, safe change to your application code and observing how it flows through the entire CI/CD system.
 
-**Deployment Validation Stage** uses Prometheus metrics to validate that deployments meet SLO requirements before marking them successful.
+### Understanding the GitOps Testing Strategy
 
-**Rollback Integration** triggers automatic rollback if validation fails or SLO violations are detected.
+**Why we're testing with a small change:** GitOps workflows connect multiple systems (Git → GitHub Actions → Container Registry → ArgoCD → Kubernetes). Testing with a harmless modification validates that all components communicate correctly without risking application stability.
 
-**Test the GitOps workflow with a safe change:**
+**The test change we'll make:** Adding a timestamped comment to your application configuration file. This triggers the build pipeline without affecting application behavior.
+
+### Step 4A: Create Safe Test Change
+
+**Create a feature branch for testing:**
 
 ```bash
 # Create a feature branch for testing
@@ -355,14 +361,58 @@ git checkout -b exercise6-gitops-test
 
 # Make a small change to test the pipeline
 echo "# GitOps deployment test - $(date)" >> app/config.py
+```
 
-# Commit and push to trigger the test phase
-git add .
+**What this command does:**
+- **Appends a Python comment** to `app/config.py` with current timestamp
+- **Creates a code change** that GitHub Actions will detect
+- **Doesn't modify application behavior** since it's just a comment
+- **Provides clear traceability** with the timestamp for tracking
+
+**Commit and push to trigger the test phase:**
+
+```bash
+git add app/config.py
 git commit -m "test: GitOps pipeline validation"
 git push origin exercise6-gitops-test
 ```
 
-**The feature branch triggers only the test-application job.** Full deployment automation runs only on the main branch to prevent accidental deployments.
+### Step 4B: Monitor GitHub Actions Execution
+
+**Navigate to your GitHub repository's Actions tab:**
+1. **Open your repository** in GitHub (`https://github.com/your-username/kubernetes-sre-cloud-native`)
+2. **Click the "Actions" tab** in the repository navigation
+3. **Look for the new workflow run** triggered by your push
+
+**What you should observe in the Actions interface:**
+
+**Workflow Trigger Details:**
+- **Run name:** Shows your commit message "test: GitOps pipeline validation"
+- **Branch:** `exercise6-gitops-test` 
+- **Trigger event:** `push` (from your git push command)
+- **Workflow file:** `.github/workflows/gitops-deploy.yml`
+
+**Job Execution for Feature Branch:**
+- **test-application job:** Runs code quality checks, unit tests, and build validation
+- **deploy-production job:** Skipped (only runs on main branch)
+- **Status indicators:** Green checkmarks for successful steps, red X for failures
+
+**Why this workflow behavior matters:**
+- **Feature branch protection:** Prevents accidental deployments to production
+- **Code validation:** Ensures changes don't break the application before merging
+- **Development safety:** Allows testing pipeline components without affecting live systems
+
+### Step 4C: Understanding the GitOps Safety Model
+
+**Branch-based deployment strategy:**
+- **Feature branches:** Run tests only, no deployment to production
+- **Main branch:** Triggers full deployment pipeline to production
+- **Pull request workflow:** Code review before production deployment
+
+**This demonstrates GitOps best practices:**
+- **Separation of concerns:** Testing separated from deployment
+- **Review gates:** Human approval before production changes
+- **Audit trails:** Complete history of what changed and when
 
 **Clean up the test branch:**
 
@@ -372,6 +422,8 @@ git checkout main
 git branch -D exercise6-gitops-test
 git push origin --delete exercise6-gitops-test
 ```
+
+**Key learning outcomes:** You've validated that your GitOps pipeline can detect code changes, execute appropriate workflow steps based on branch policies, and maintain separation between testing and production deployment processes. This foundation ensures that when you make real application changes on the main branch, the complete deployment automation will function correctly.
 
 ---
 

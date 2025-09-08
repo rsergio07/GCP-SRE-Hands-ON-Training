@@ -12,7 +12,7 @@ on:
       - 'exercises/exercise6/**'
 
 env:
-  REGISTRY: gcr.io
+  REGISTRY: us-central1-docker.pkg.dev
   IMAGE_NAME: sre-demo-app
   DEPLOYMENT_TIMEOUT: 600
 
@@ -39,10 +39,10 @@ jobs:
       run: |
         pip install flake8 bandit pytest
 
-    - name: Lint Python code
+    - name: Lint Python code (relaxed for educational purposes)
       run: |
         cd exercises/exercise6
-        flake8 app/ --max-line-length=88 --ignore=E203,W503,W292,E302,W293,E501,W291,E302,W293,E305,W291 --exclude=__pycache__
+        flake8 app/ --max-line-length=88 --ignore=E203,W503,W293,E501,E302,W291,W292 --exclude=__pycache__
 
     - name: Run security analysis
       run: |
@@ -78,13 +78,13 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
 
     - name: Configure Docker to use gcloud as credential helper
-      run: gcloud auth configure-docker
+      run: gcloud auth configure-docker us-central1-docker.pkg.dev
 
     - name: Extract metadata for Docker
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}
+        images: ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/sre-demo-app/${{ env.IMAGE_NAME }}
         tags: |
           type=ref,event=branch
           type=sha,prefix={{branch}}-
@@ -119,7 +119,7 @@ jobs:
     - name: Run Trivy vulnerability scanner
       run: |
         trivy image --exit-code 0 --severity HIGH,CRITICAL \
-          ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest
+          ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/sre-demo-app/${{ env.IMAGE_NAME }}:latest
 
   update-manifests:
     needs: build-and-push
@@ -140,31 +140,31 @@ jobs:
 
     - name: Update Kubernetes manifests
       run: |
-        # Update deployment image
-        sed -i "s|gcr.io/PROJECT_ID/sre-demo-app:.*|gcr.io/${{ secrets.GCP_PROJECT_ID }}/sre-demo-app:$NEW_IMAGE_TAG|g" exercises/exercise6/k8s/deployment.yaml
+        # Update deployment image in GitOps directory
+        sed -i "s|us-central1-docker.pkg.dev/.*/sre-demo-app/sre-demo-app:.*|${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/sre-demo-app/${{ env.IMAGE_NAME }}:$NEW_IMAGE_TAG|g" exercises/exercise6/k8s/gitops/deployment.yaml
 
         # Update deployment timestamp
-        sed -i "s|deployment.timestamp:.*|deployment.timestamp: \"$TIMESTAMP\"|g" exercises/exercise6/k8s/deployment.yaml
+        sed -i "s|deployment.timestamp:.*|deployment.timestamp: \"$TIMESTAMP\"|g" exercises/exercise6/k8s/gitops/deployment.yaml
 
         # Update version labels
-        sed -i "s|version: v.*|version: v1.2.0-${{ github.sha }}|g" exercises/exercise6/k8s/deployment.yaml
+        sed -i "s|version: v.*|version: v1.2.0-${{ github.sha }}|g" exercises/exercise6/k8s/gitops/deployment.yaml
 
         # Update environment variables
-        sed -i "s|value: \"unknown\"|value: \"${{ github.sha }}\"|g" exercises/exercise6/k8s/deployment.yaml
-        sed -i "s|value: \"gitops\"|value: \"$DEPLOYMENT_ID\"|g" exercises/exercise6/k8s/deployment.yaml
+        sed -i "s|value: \"{{ .Values.gitCommit | default \"unknown\" }}\"|value: \"${{ github.sha }}\"|g" exercises/exercise6/k8s/gitops/deployment.yaml
+        sed -i "s|value: \"{{ .Values.deploymentId | default \"gitops\" }}\"|value: \"$DEPLOYMENT_ID\"|g" exercises/exercise6/k8s/gitops/deployment.yaml
 
     - name: Commit and push changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add exercises/exercise6/k8s/deployment.yaml
+        git add exercises/exercise6/k8s/gitops/deployment.yaml
         git commit -m "GitOps: Update image to $NEW_IMAGE_TAG [skip ci]" || exit 0
         git push
 
     - name: Create deployment summary
       run: |
         echo "## GitOps Deployment Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- **Image**: \`${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:$NEW_IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: \`${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/sre-demo-app/${{ env.IMAGE_NAME }}:$NEW_IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
         echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
         echo "- **Deployment ID**: \`$DEPLOYMENT_ID\`" >> $GITHUB_STEP_SUMMARY
         echo "- **Timestamp**: \`$TIMESTAMP\`" >> $GITHUB_STEP_SUMMARY
@@ -196,7 +196,7 @@ jobs:
       run: |
         echo "Waiting for ArgoCD to sync the new deployment..."
 
-        EXPECTED_IMAGE="gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:gitops-${{ github.sha }}"
+        EXPECTED_IMAGE="${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/sre-demo-app/${{ env.IMAGE_NAME }}:gitops-${{ github.sha }}"
 
         for i in {1..60}; do
           CURRENT_IMAGE=$(kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].image}' || echo "")

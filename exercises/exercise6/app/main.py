@@ -16,7 +16,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer() if Config.LOG_FORMAT == 'json' 
+        structlog.processors.JSONRenderer() if Config.LOG_FORMAT == 'json'
         else structlog.dev.ConsoleRenderer()
     ],
     context_class=dict,
@@ -112,7 +112,7 @@ def before_request():
     """Log request start and update connection metrics."""
     ACTIVE_CONNECTIONS.inc()
     request.start_time = time.time()
-    
+
     logger.info(
         "Request started",
         method=request.method,
@@ -126,22 +126,22 @@ def before_request():
 def after_request(response):
     """Log request completion and update metrics."""
     ACTIVE_CONNECTIONS.dec()
-    
+
     duration = time.time() - request.start_time
     endpoint = request.endpoint or 'unknown'
-    
+
     # Update Prometheus metrics
     REQUEST_COUNT.labels(
         method=request.method,
         endpoint=endpoint,
         status_code=response.status_code
     ).inc()
-    
+
     REQUEST_DURATION.labels(
         method=request.method,
         endpoint=endpoint
     ).observe(duration)
-    
+
     # Log request completion
     logger.info(
         "Request completed",
@@ -151,14 +151,14 @@ def after_request(response):
         duration_seconds=round(duration, 3),
         deployment_method="gitops"
     )
-    
+
     return response
 
 @app.route('/')
 def home():
     """Home endpoint with GitOps deployment info."""
     BUSINESS_METRICS.labels(operation_type='health_check', status='success').inc()
-    
+
     return jsonify({
         "message": f"Welcome to {Config.APP_NAME}!",
         "status": "healthy",
@@ -168,7 +168,7 @@ def home():
         "timestamp": time.time(),
         "features": [
             "Automated deployments",
-            "SLO-based rollbacks", 
+            "SLO-based rollbacks",
             "Blue-green deployment ready",
             "Continuous monitoring"
         ]
@@ -177,11 +177,11 @@ def home():
 @app.route('/stores')
 def get_stores():
     """Get all stores with simulated processing time and error rate."""
-    
+
     # Simulate processing time
     processing_time = random.uniform(0.1, 0.8)
     time.sleep(processing_time)
-    
+
     # Simulate occasional errors for SRE testing (5% error rate)
     if random.random() < 0.05:
         BUSINESS_METRICS.labels(operation_type='store_fetch', status='error').inc()
@@ -199,7 +199,7 @@ def get_stores():
                 "version": Config.APP_VERSION
             }
         }), 503
-    
+
     # Successful response
     BUSINESS_METRICS.labels(operation_type='store_fetch', status='success').inc()
     logger.info(
@@ -208,7 +208,7 @@ def get_stores():
         processing_time=processing_time,
         deployment_method="gitops"
     )
-    
+
     return jsonify({
         "stores": stores,
         "total_stores": len(stores),
@@ -223,9 +223,9 @@ def get_stores():
 @app.route('/stores/<int:store_id>')
 def get_store(store_id):
     """Get specific store by ID."""
-    
+
     store = next((s for s in stores if s['id'] == store_id), None)
-    
+
     if not store:
         BUSINESS_METRICS.labels(operation_type='store_lookup', status='not_found').inc()
         logger.warning("Store not found", store_id=store_id, deployment_method="gitops")
@@ -236,14 +236,14 @@ def get_store(store_id):
                 "version": Config.APP_VERSION
             }
         }), 404
-    
+
     BUSINESS_METRICS.labels(operation_type='store_lookup', status='success').inc()
     logger.info("Store retrieved", store_id=store_id, store_name=store['name'], deployment_method="gitops")
-    
+
     return jsonify({
         **store,
         "deployment_info": {
-            "method": "gitops", 
+            "method": "gitops",
             "version": Config.APP_VERSION,
             "environment": Config.FLASK_ENV
         }
@@ -252,7 +252,7 @@ def get_store(store_id):
 @app.route('/health')
 def health():
     """Kubernetes liveness probe endpoint with deployment info."""
-    
+
     # Perform basic health checks
     health_status = {
         "status": "healthy",
@@ -266,17 +266,17 @@ def health():
             "gitops_sync": "ok"
         }
     }
-    
+
     logger.info("Health check performed", **health_status)
     return jsonify(health_status)
 
 @app.route('/ready')
 def ready():
     """Kubernetes readiness probe endpoint with GitOps awareness."""
-    
+
     # Simulate readiness checks (database connections, external services, etc.)
     is_ready = random.random() > 0.05  # 95% ready rate
-    
+
     readiness_status = {
         "status": "ready" if is_ready else "not ready",
         "timestamp": time.time(),
@@ -288,16 +288,16 @@ def ready():
             "argocd_sync": "ok"
         }
     }
-    
+
     status_code = 200 if is_ready else 503
-    
+
     logger.info(
         "Readiness check performed",
         ready=is_ready,
         deployment_method="gitops",
         **readiness_status
     )
-    
+
     return jsonify(readiness_status), status_code
 
 @app.route('/metrics')
@@ -310,7 +310,7 @@ def metrics():
 def deployment_info():
     """Deployment information endpoint for GitOps visibility."""
     BUSINESS_METRICS.labels(operation_type='deployment_info', status='success').inc()
-    
+
     deployment_data = {
         "deployment_method": "gitops",
         "version": Config.APP_VERSION,
@@ -328,7 +328,7 @@ def deployment_info():
             "uptime_seconds": time.time() - (time.time() % 86400)  # Simplified uptime
         }
     }
-    
+
     logger.info("Deployment info requested", **deployment_data)
     return jsonify(deployment_data)
 
@@ -368,7 +368,7 @@ if __name__ == '__main__':
         port=Config.PORT,
         deployment_method="gitops"
     )
-    
+
     # Run the Flask development server
     app.run(
         host=Config.HOST,
