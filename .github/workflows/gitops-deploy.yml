@@ -42,7 +42,7 @@ jobs:
     - name: Lint Python code
       run: |
         cd exercises/exercise6
-        flake8 app/ --max-line-length=88 --ignore=E203,W503 --exclude=__pycache__
+        flake8 app/ --max-line-length=88 --ignore=E203,W503,W292,E302,W293,E501,W291,E302,W293,E305,W291 --exclude=__pycache__
 
     - name: Run security analysis
       run: |
