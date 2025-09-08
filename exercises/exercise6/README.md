@@ -470,16 +470,24 @@ git commit -m "gitops: Scale application to 3 replicas for testing"
 git push origin gitops-config-test
 ```
 
+**Understanding ArgoCD Branch Monitoring:**
+
+ArgoCD is configured to monitor the `HEAD` of your repository, which points to the `main` branch. When you push changes to the `gitops-config-test` feature branch, ArgoCD doesn't detect them because it's only watching `main`. This is typical behavior in production GitOps workflows where only the main branch triggers deployments.
+
+To trigger ArgoCD synchronization, merge your changes to main:
+
+```bash
+# Merge changes to main branch (ArgoCD monitors main, not feature branches)
+git checkout main
+git merge gitops-config-test
+git push origin main
+```
+
 Monitor ArgoCD detect and apply the change:
 
 ```bash
 # Watch ArgoCD sync the change (this may take 1-3 minutes)
 argocd app get sre-demo-gitops
-```
-
-```bash
-# Check if manual sync is needed
-argocd app sync sre-demo-gitops
 ```
 
 Observe the scaling operation:
