@@ -62,6 +62,8 @@ Kubernetes control plane is running at https://34.42.233.203
 GLBCDefaultBackend is running at https://34.42.233.203/api/v1/namespaces/kube-system/services/default-http-backend:http/proxy
 KubeDNS is running at https://34.42.233.203/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
 Metrics-server is running at https://34.42.233.203/api/v1/namespaces/kube-system/services/https:metrics-server:/proxy
+
+To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
 ```
 
 ```bash
@@ -324,35 +326,22 @@ Name:               argocd/sre-demo-gitops
 Project:            default
 Server:             https://kubernetes.default.svc
 Namespace:          default
-URL:                https://34.31.169.228/applications/sre-demo-gitops
-Source:
-- Repo:             https://github.com/your-username/kubernetes-sre-cloud-native
-  Target:           HEAD
-  Path:             exercises/exercise6/k8s/gitops
+URL:                https://34.63.232.153/applications/sre-demo-gitops
+Repo:               https://github.com/rsergio07/kubernetes-sre-cloud-native
+Target:             main
+Path:               exercises/exercise6/k8s/gitops
 SyncWindow:         Sync Allowed
 Sync Policy:        Automated (Prune)
-Sync Status:        OutOfSync from HEAD (4a9a460)
-Health Status:      Progressing
+Sync Status:        Synced to main (f0fe984)
+Health Status:      Healthy
 
-GROUP  KIND        NAMESPACE  NAME               STATUS     HEALTH       HOOK  MESSAGE
-apps   Deployment  default    sre-demo-app       OutOfSync  Progressing        deployment.apps/sre-demo-app configured
-       Service     default    sre-demo-headless  Synced     Healthy            
-       Service     default    sre-demo-service   Synced     Healthy            
+GROUP  KIND        NAMESPACE  NAME               STATUS  HEALTH   HOOK  MESSAGE
+       Service     default    sre-demo-service   Synced  Healthy        service/sre-demo-service unchanged
+       Service     default    sre-demo-headless  Synced  Healthy        service/sre-demo-headless unchanged
+apps   Deployment  default    sre-demo-app       Synced  Healthy        deployment.apps/sre-demo-app configured          
 ```
 
 **Access the ArgoCD application view:** Navigate to the URL shown in the `argocd app get` output (e.g., `https://ARGOCD_IP/applications/sre-demo-gitops`).
-
-**If ArgoCD shows OutOfSync:**
-
-```bash
-# Trigger manual sync (common in development environments)
-argocd app sync sre-demo-gitops
-```
-
-```bash
-# Verify sync completed successfully
-kubectl get pods -l app=sre-demo-app
-```
 
 ---
 
@@ -421,18 +410,34 @@ This section demonstrates the core GitOps workflow by making controlled configur
 
 ### Step 6: Test GitOps Workflow with Configuration Changes
 
-### Check Current Application State
+#### 1. Check Current Application State
 
 Before making configuration changes, examine the current state of your application to understand the baseline:
 
 ```bash
 # Check current deployment configuration
 kubectl get deployment sre-demo-app -o yaml | grep -A 5 "replicas\|image:"
+````
+
+**Expected output:**
+
+```
+replicas: 2
+...
+image: us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app:latest
 ```
 
 ```bash
 # View current pod count and status
 kubectl get pods -l app=sre-demo-app
+```
+
+**Expected output:**
+
+```
+NAME                            READY   STATUS    RESTARTS   AGE
+sre-demo-app-84b5769f44-pqmh8   1/1     Running   0         9m
+sre-demo-app-84b5769f44-vvs9z   1/1     Running   7         52m
 ```
 
 ```bash
@@ -441,91 +446,92 @@ argocd app get sre-demo-gitops | grep -A 10 "GROUP.*KIND"
 ```
 
 **Expected output:**
+
 ```
-  replicas: 2
-      image: us-central1-docker.pkg.dev/your-project/sre-demo-app/sre-demo-app:latest
-
-NAME                            READY   STATUS    RESTARTS   AGE
-sre-demo-app-74b756bb8b-abc12   1/1     Running   0          30m
-sre-demo-app-74b756bb8b-def34   1/1     Running   0          30m
-
-GROUP  KIND        NAMESPACE  NAME               STATUS  HEALTH   HOOK  MESSAGE
-apps   Deployment  default    sre-demo-app       Synced  Healthy        
-       Service     default    sre-demo-headless  Synced  Healthy        
-       Service     default    sre-demo-service   Synced  Healthy        
+apps   Deployment  default    sre-demo-app   Synced  Healthy
 ```
 
-This shows your application currently has **2 replicas** running and all resources are **Synced** and **Healthy**. You'll observe how GitOps automatically detects and applies changes when you modify the configuration.
+---
 
-Create a feature branch for testing GitOps changes:
+#### 2. Make a Configuration Change
+
+Scale the application to test GitOps synchronization:
 
 ```bash
-# Create a feature branch for configuration changes
-git checkout -b gitops-config-test
-```
-
-Make a controlled change to demonstrate GitOps workflow:
-
-```bash
-# Scale the application to test GitOps synchronization
 sed -i 's/replicas: 2/replicas: 3/g' k8s/gitops/deployment.yaml
-```
-
-```bash
-# Verify the change
 grep "replicas:" k8s/gitops/deployment.yaml
 ```
 
-Commit and push the configuration change:
+**Expected output:**
+
+```
+replicas: 3
+```
+
+---
+
+#### 3. Commit and Push
 
 ```bash
 git add k8s/gitops/deployment.yaml
 git commit -m "gitops: Scale application to 3 replicas for testing"
-git push origin gitops-config-test
-```
-
-**Understanding ArgoCD Branch Monitoring:**
-
-ArgoCD is configured to monitor the `HEAD` of your repository, which points to the `main` branch. When you push changes to the `gitops-config-test` feature branch, ArgoCD doesn't detect them because it's only watching `main`. This is typical behavior in production GitOps workflows where only the main branch triggers deployments.
-
-To trigger ArgoCD synchronization, merge your changes to main:
-
-```bash
-# Merge changes to main branch (ArgoCD monitors main, not feature branches)
-git checkout main
-git merge gitops-config-test
 git push origin main
 ```
 
-Monitor ArgoCD detect and apply the change:
+---
+
+#### 4. Refresh ArgoCD
+
+ArgoCD may take time to detect the new commit. Force a refresh:
+
+**From the CLI:**
 
 ```bash
-# Watch ArgoCD sync the change (this may take 1-3 minutes)
-argocd app get sre-demo-gitops
+argocd app get sre-demo-gitops --refresh
 ```
 
-Observe the scaling operation:
+**From the ArgoCD UI:**
+
+1. Open your application.
+2. Click **REFRESH** (top right).
+3. The app should now show **OutOfSync** (Git: 3 replicas, Cluster: 2).
+4. Click **SYNC** to apply the change.
+
+---
+
+#### 5. Verify Scaling
 
 ```bash
-# Verify that pods scaled to 3 replicas
 kubectl get pods -l app=sre-demo-app
 ```
 
+**Expected output:**
+
+```
+NAME                            READY   STATUS    RESTARTS   AGE
+sre-demo-app-xyz123             1/1     Running   0         2m
+sre-demo-app-xyz456             1/1     Running   0         2m
+sre-demo-app-xyz789             1/1     Running   0         1m
+```
+
 ```bash
-# Check deployment status
 kubectl get deployment sre-demo-app
 ```
 
 **Expected output:**
-```
-NAME                            READY   STATUS    RESTARTS   AGE
-sre-demo-app-74b756bb8b-abc12   1/1     Running   0          5m
-sre-demo-app-74b756bb8b-def34   1/1     Running   0          5m
-sre-demo-app-74b756bb8b-ghi56   1/1     Running   0          2m
 
-NAME           READY   UP-TO-DATE   AVAILABLE   AGE
-sre-demo-app   3/3     3            3           2h
 ```
+NAME           READY   UP-TO-DATE   AVAILABLE   AGE
+sre-demo-app   3/3     3            3           2d20h
+```
+
+---
+
+### Key Learning
+
+* **Git as Source of Truth**: Even if you scale manually, ArgoCD reconciles back to the Git-defined state.
+* **Forcing Refresh**: Use `--refresh` or the UI **REFRESH** button to ensure ArgoCD picks up new commits immediately.
+* **Configuration Drift Prevention**: GitOps ensures consistency by detecting and correcting drift automatically.
 
 ### Step 7: Test Configuration Rollback Capabilities
 
