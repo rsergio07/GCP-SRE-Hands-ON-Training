@@ -11,7 +11,8 @@
 * [Implementing GitOps Deployment Pipelines](#implementing-gitops-deployment-pipelines)
 * [Exploring ArgoCD Operations](#exploring-argocd-operations)
 * [Testing GitOps Configuration Management](#testing-gitops-configuration-management)
-* [Advanced ArgoCD Features](#advanced-argocd-features)
+* [Rollback in the ArgoCD UI](#step-7-test-rollback-using-the-argocd-ui)
+* [Sync Policies in the ArgoCD UI](#step-8-explore-sync-policies-and-manual-control)
 * [Final Objective](#final-objective)
 * [Troubleshooting](#troubleshooting)
 * [Next Steps](#next-steps)
@@ -30,13 +31,14 @@ This exercise demonstrates how modern DevOps teams manage deployments with relia
 
 By completing this exercise, you will understand:
 
-- **GitOps Fundamentals**: How to implement declarative, Git-based deployment workflows
-- **ArgoCD Installation**: How to deploy and configure ArgoCD in Kubernetes clusters
-- **Application Management**: How to create and manage ArgoCD applications for continuous deployment
-- **GitOps Workflows**: How to make configuration changes through Git that automatically deploy to clusters
-- **Deployment Visibility**: How to use ArgoCD's interface to monitor deployment status and health
-- **Rollback Operations**: How to revert deployments using ArgoCD's rollback capabilities
-- **Configuration Drift**: How GitOps prevents and corrects configuration drift in production systems
+* **GitOps Fundamentals**: How to implement declarative, Git-based deployment workflows
+* **ArgoCD Installation**: How to deploy and configure ArgoCD in Kubernetes clusters
+* **Application Management**: How to create and manage ArgoCD applications for continuous deployment
+* **GitOps Workflows**: How to make configuration changes through Git that automatically deploy to clusters
+* **Deployment Visibility**: How to use ArgoCD's interface to monitor deployment status and health
+* **Rollback Operations (UI)**: How to revert deployments using the ArgoCD web interface
+* **Sync Policy Control (UI)**: How to toggle between manual and automated synchronization in the ArgoCD dashboard
+* **Configuration Drift**: How GitOps prevents and corrects configuration drift in production systems
 
 ---
 
@@ -578,178 +580,56 @@ You’ll see events showing the scale-up to 3 replicas, immediately followed by 
 * **Forcing Refresh**: Use `--refresh` or the UI **SYNC** button to ensure ArgoCD picks up new commits immediately.
 * **Configuration Drift Prevention**: GitOps ensures consistency by detecting and correcting drift automatically.
 
-### Step 7: Test Configuration Rollback Capabilities
+## Step 7: Test Rollback Using the ArgoCD UI
 
-Demonstrate ArgoCD's rollback functionality:
+Now that you’ve seen GitOps reconciliation with scaling changes, let’s explore how ArgoCD handles **rollback** directly in the web interface.
 
-```bash
-# View deployment history to see available revisions
-argocd app history sre-demo-gitops
-```
+1. **Open your ArgoCD Application** (`sre-demo-gitops`) in the UI.
+   You’ll see the resource tree showing Services, Deployment, ReplicaSets, and Pods.
 
-Replace `<previous-revision-id>` with actual ID from history:
+2. **Navigate to the “History and Rollback” tab**.
+   This shows the full deployment history ArgoCD has recorded, with each entry tied to a Git commit.
 
-```bash
-# Rollback to previous revision (before scaling)
-argocd app rollback sre-demo-gitops <previous-revision-id>
-```
+3. **Select a previous revision** in the list.
+   (For example, the commit just before your scaling change.)
 
-```bash
-# Watch the rollback process
-kubectl get pods -l app=sre-demo-app
-```
+4. **Click “Rollback”** to redeploy that revision.
+   ArgoCD will update your cluster to match the older commit.
 
-Test additional configuration changes:
-
-```bash
-# Add a label to test ArgoCD change detection
-sed -i '/labels:/a\    environment: testing' k8s/gitops/deployment.yaml
-```
-
-```bash
-git add k8s/gitops/deployment.yaml
-git commit -m "gitops: Add environment label for testing"
-git push origin gitops-config-test
-```
-
-```bash
-# Sync and verify the label addition
-argocd app sync sre-demo-gitops
-```
-
-```bash
-kubectl get deployment sre-demo-app -o yaml | grep -A 5 labels:
-```
-
-Clean up the feature branch:
-
-```bash
-# Switch back to main branch
-git checkout main
-
-# Reset any configuration changes
-git reset --hard HEAD
-
-# Delete the feature branch locally and remotely
-git branch -D gitops-config-test
-git push origin --delete gitops-config-test
-
-# Sync ArgoCD to main branch state
-argocd app sync sre-demo-gitops
-```
+⚠️ **Important Note**: The rollback is temporary. Since Git still declares `replicas: 2` in the manifest, ArgoCD will reconcile back to that state. This illustrates the key GitOps principle: **Git is always the single source of truth.**
 
 ---
 
-## Advanced ArgoCD Features
+## Step 8: Explore Sync Policies and Manual Control
 
-### Exploring ArgoCD Management Capabilities
+Next, let’s experiment with ArgoCD’s **sync policies**.
 
-This section covers advanced ArgoCD features for production deployment management including application sets, resource hooks, and sync policies.
+1. In the **ArgoCD Application view**, go to the **App Details** tab.
+   Look for the **Sync Policy** section.
 
-### Step 8: Explore ArgoCD Application Management
+2. **Switch the policy from “Automated” to “Manual.”**
+   Now ArgoCD will stop automatically applying Git changes.
+   The UI will still detect when your cluster is **OutOfSync**, but it won’t enforce reconciliation.
 
-Examine application configuration options:
+3. **Make a Git change** (for example, add a comment line to `deployment.yaml`) and push it.
+   Back in the ArgoCD UI, you’ll see the app status turn **OutOfSync**.
 
-```bash
-# View detailed application configuration
-argocd app get sre-demo-gitops -o yaml
-```
+4. Instead of ArgoCD fixing it immediately, you’ll need to:
 
-Test different sync policies:
+   * Click **SYNC** → **SYNCHRONIZE** to apply the change manually.
 
-```bash
-# Check current sync policy
-argocd app get sre-demo-gitops | grep -A 5 "Sync Policy"
-```
+5. **Switch the sync policy back to Automated** when finished, so ArgoCD resumes enforcing Git state automatically.
 
-```bash
-# Manually control sync behavior
-argocd app set sre-demo-gitops --sync-policy manual
-```
+---
 
-Make a change to test manual sync:
+### Key Learning
 
-```bash
-git checkout -b test-manual-sync
-echo "# Manual sync test - $(date)" >> k8s/gitops/deployment.yaml
-git add k8s/gitops/deployment.yaml
-git commit -m "test: Manual sync configuration"
-git push origin test-manual-sync
-```
+* **Rollback in the UI** is useful for quick recovery, but not permanent — Git always wins.
+* **Sync Policies** give you flexibility:
 
-Observe that ArgoCD detects but doesn't auto-sync:
-
-```bash
-# ArgoCD detects but doesn't auto-sync
-argocd app get sre-demo-gitops
-```
-
-```bash
-# Manually trigger sync
-argocd app sync sre-demo-gitops
-```
-
-### Step 9: Validate GitOps Operational Benefits
-
-Examine the audit trail provided by GitOps:
-
-```bash
-# Review Git commit history showing deployment changes
-git log --oneline -10
-```
-
-**Expected output showing clear audit trail:**
-```
-abc123ef test: Manual sync configuration
-def456gh gitops: Add environment label for testing
-ghi789jk gitops: Scale application to 3 replicas for testing
-```
-
-Check ArgoCD deployment history:
-
-```bash
-# View ArgoCD deployment history
-argocd app history sre-demo-gitops
-```
-
-**Expected output:**
-```
-ID  DATE                           REVISION
-5   2025-09-06 15:42:33 +0000 UTC  abc123ef (test: Manual sync configuration)
-4   2025-09-06 15:38:21 +0000 UTC  def456gh (gitops: Add environment label)
-3   2025-09-06 15:35:18 +0000 UTC  ghi789jk (gitops: Scale application to 3 replicas)
-```
-
-Demonstrate deployment state management:
-
-```bash
-# Show current deployment state
-kubectl get deployment sre-demo-app -o yaml | grep -A 10 metadata:
-```
-
-```bash
-# Compare with GitOps desired state
-cat k8s/gitops/deployment.yaml | grep -A 10 metadata:
-```
-
-Clean up test configuration:
-
-```bash
-# Return to main branch and clean up
-git checkout main
-git branch -D test-manual-sync
-git push origin --delete test-manual-sync
-```
-
-```bash
-# Reset sync policy to automatic
-argocd app set sre-demo-gitops --sync-policy automated
-```
-
-```bash
-# Final sync to ensure clean state
-argocd app sync sre-demo-gitops
-```
+  * Automated ensures Git is always enforced.
+  * Manual gives you control to stage or delay changes.
+  * The UI provides full visibility: resource tree, history, rollback, sync, and health — without needing CLI commands.
 
 ---
 
