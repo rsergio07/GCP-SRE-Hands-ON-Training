@@ -417,14 +417,31 @@ Before making configuration changes, examine the current state of your applicati
 ```bash
 # Check current deployment configuration
 kubectl get deployment sre-demo-app -o yaml | grep -A 5 "replicas\|image:"
-````
+```
 
 **Expected output:**
 
 ```
-replicas: 2
-...
-image: us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app:latest
+  labels:
+    app: sre-demo-app
+    component: backend
+--
+  replicas: 2
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: sre-demo-app
+  strategy:
+--
+        image: us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app:latest
+        imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+--
+  replicas: 2
+  updatedReplicas: 2
 ```
 
 ```bash
@@ -448,7 +465,10 @@ argocd app get sre-demo-gitops | grep -A 10 "GROUP.*KIND"
 **Expected output:**
 
 ```
-apps   Deployment  default    sre-demo-app   Synced  Healthy
+GROUP  KIND        NAMESPACE  NAME               STATUS  HEALTH   HOOK  MESSAGE
+       Service     default    sre-demo-service   Synced  Healthy        service/sre-demo-service unchanged
+       Service     default    sre-demo-headless  Synced  Healthy        service/sre-demo-headless unchanged
+apps   Deployment  default    sre-demo-app       Synced  Healthy        deployment.apps/sre-demo-app configured
 ```
 
 ---
@@ -493,13 +513,10 @@ argocd app get sre-demo-gitops --refresh
 **From the ArgoCD UI:**
 
 1. Open your application.
-2. Click **REFRESH** (top right).
-3. The app should now show **OutOfSync** (Git: 3 replicas, Cluster: 2).
-4. Click **SYNC** to apply the change.
+2. Click **SYNC** and then **SYNCHRONIZE**.
+3. The app should now show **3 replicas**.
 
----
-
-#### 5. Verify Scaling
+**From the Terminal:**
 
 ```bash
 kubectl get pods -l app=sre-demo-app
@@ -509,9 +526,9 @@ kubectl get pods -l app=sre-demo-app
 
 ```
 NAME                            READY   STATUS    RESTARTS   AGE
-sre-demo-app-xyz123             1/1     Running   0         2m
-sre-demo-app-xyz456             1/1     Running   0         2m
-sre-demo-app-xyz789             1/1     Running   0         1m
+sre-demo-app-xyz123             1/1     Running   0          2m
+sre-demo-app-xyz456             1/1     Running   0          2m
+sre-demo-app-xyz789             1/1     Running   0          1m
 ```
 
 ```bash
@@ -525,12 +542,40 @@ NAME           READY   UP-TO-DATE   AVAILABLE   AGE
 sre-demo-app   3/3     3            3           2d20h
 ```
 
----
+### ⚠️ Note
+
+During your test, the replicas briefly scaled to **3**, but quickly reverted back to **2**.
+This happened because the Git repository still declared `replicas: 2` as the desired state.
+
+This behavior illustrates the **GitOps reconciliation loop**: ArgoCD continuously enforces the state defined in Git, overriding any manual or temporary changes in the cluster.
+
+To confirm this behavior in your own environment, run:
+
+```bash
+kubectl describe deployment sre-demo-app | tail -10
+```
+
+**Expected output:**
+
+```
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  sre-demo-app-575794657d (0/0 replicas created)
+NewReplicaSet:   sre-demo-app-84b5769f44 (2/2 replicas created)
+Events:
+  Type    Reason             Age                  From                   Message
+  ----    ------             ----                 ----                   -------
+  Normal  ScalingReplicaSet  6m59s (x2 over 95m)  deployment-controller  Scaled up replica set sre-demo-app-84b5769f44 from 2 to 3
+  Normal  ScalingReplicaSet  6m1s (x2 over 94m)   deployment-controller  Scaled down replica set sre-demo-app-84b5769f44 from 3 to 2
+```
+
+You’ll see events showing the scale-up to 3 replicas, immediately followed by a scale-down back to 2.
 
 ### Key Learning
 
 * **Git as Source of Truth**: Even if you scale manually, ArgoCD reconciles back to the Git-defined state.
-* **Forcing Refresh**: Use `--refresh` or the UI **REFRESH** button to ensure ArgoCD picks up new commits immediately.
+* **Forcing Refresh**: Use `--refresh` or the UI **SYNC** button to ensure ArgoCD picks up new commits immediately.
 * **Configuration Drift Prevention**: GitOps ensures consistency by detecting and correcting drift automatically.
 
 ### Step 7: Test Configuration Rollback Capabilities
