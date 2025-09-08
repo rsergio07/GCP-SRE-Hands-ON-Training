@@ -16,3 +16,4 @@ Version 1.2.0 adds GitOps deployment support with:
 __version__ = "1.2.0"
 __author__ = "SRE Course"
 __deployment_method__ = "GitOps"
+

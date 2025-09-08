@@ -1,7 +1,8 @@
 import os
 from typing import Dict, Any
 
-class Config:
+
+class Config:  # Add blank line before class
     """Application configuration class with GitOps deployment support."""
     
     # Flask settings
@@ -25,7 +26,8 @@ class Config:
     GIT_COMMIT = os.environ.get('GIT_COMMIT', 'unknown')
     DEPLOYMENT_ID = os.environ.get('DEPLOYMENT_ID', 'manual')
     
-    @classmethod
+
+    @classmethod  # Add blank line before method
     def get_config_dict(cls) -> Dict[str, Any]:
         """Return configuration as dictionary for logging."""
         return {
@@ -36,4 +38,4 @@ class Config:
             'deployment_method': cls.DEPLOYMENT_METHOD,
             'git_commit': cls.GIT_COMMIT,
             'deployment_id': cls.DEPLOYMENT_ID
-        }# GitOps deployment test - Mon Sep  8 15:27:35 UTC 2025
+        }
