@@ -387,6 +387,42 @@ This section demonstrates the core GitOps workflow by making controlled configur
 
 ### Step 6: Test GitOps Workflow with Configuration Changes
 
+### Check Current Application State
+
+Before making configuration changes, examine the current state of your application to understand the baseline:
+
+```bash
+# Check current deployment configuration
+kubectl get deployment sre-demo-app -o yaml | grep -A 5 "replicas\|image:"
+```
+
+```bash
+# View current pod count and status
+kubectl get pods -l app=sre-demo-app
+```
+
+```bash
+# Check ArgoCD application current state
+argocd app get sre-demo-gitops | grep -A 10 "GROUP.*KIND"
+```
+
+**Expected output:**
+```
+  replicas: 2
+      image: us-central1-docker.pkg.dev/your-project/sre-demo-app/sre-demo-app:latest
+
+NAME                            READY   STATUS    RESTARTS   AGE
+sre-demo-app-74b756bb8b-abc12   1/1     Running   0          30m
+sre-demo-app-74b756bb8b-def34   1/1     Running   0          30m
+
+GROUP  KIND        NAMESPACE  NAME               STATUS  HEALTH   HOOK  MESSAGE
+apps   Deployment  default    sre-demo-app       Synced  Healthy        
+       Service     default    sre-demo-headless  Synced  Healthy        
+       Service     default    sre-demo-service   Synced  Healthy        
+```
+
+This shows your application currently has **2 replicas** running and all resources are **Synced** and **Healthy**. You'll observe how GitOps automatically detects and applies changes when you modify the configuration.
+
 Create a feature branch for testing GitOps changes:
 
 ```bash
