@@ -12,6 +12,7 @@ metadata:
     gitops.argoproj.io/sync-wave: "1"
 spec:
   replicas: 2
+  revisionHistoryLimit: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
