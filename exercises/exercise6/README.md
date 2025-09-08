@@ -53,18 +53,37 @@ Before starting this exercise, ensure you have completed:
 ```bash
 # Check that your Kubernetes cluster is accessible
 kubectl cluster-info
-
-# Verify your application deployment from previous exercises
-kubectl get pods -l app=sre-demo-app
-kubectl get deployment sre-demo-app
 ```
 
 **Expected output:**
+
+```
+Kubernetes control plane is running at https://34.42.233.203
+GLBCDefaultBackend is running at https://34.42.233.203/api/v1/namespaces/kube-system/services/default-http-backend:http/proxy
+KubeDNS is running at https://34.42.233.203/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+Metrics-server is running at https://34.42.233.203/api/v1/namespaces/kube-system/services/https:metrics-server:/proxy
+```
+
+```bash
+# Verify your application deployment from previous exercises
+kubectl get pods -l app=sre-demo-app
+```
+
+**Expected output:**
+
 ```
 NAME                            READY   STATUS    RESTARTS   AGE
 sre-demo-app-7458c58c57-abc34   1/1     Running   0          4h
 sre-demo-app-7458c58c57-def56   1/1     Running   0          4h
+```
 
+```bash
+kubectl get deployment sre-demo-app
+```
+
+**Expected output:**
+
+```
 NAME           READY   UP-TO-DATE   AVAILABLE   AGE
 sre-demo-app   2/2     2            2           4h
 ```
@@ -237,11 +256,6 @@ This section establishes the GitOps deployment pipeline that connects your appli
 ### Step 3: Configure GitOps Repository Structure
 
 Examine and understand the GitOps deployment configuration:
-
-```bash
-# Review the GitOps deployment manifests
-ls -la k8s/gitops/
-```
 
 ```bash
 # Examine the ArgoCD deployment
