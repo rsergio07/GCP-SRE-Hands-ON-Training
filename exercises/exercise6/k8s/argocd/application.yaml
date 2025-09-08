@@ -14,7 +14,7 @@ spec:
 
   source:
     repoURL: https://github.com/rsergio07/kubernetes-sre-cloud-native
-    targetRevision: feature/gitops-kustomize-fix
+    targetRevision: HEAD
     path: exercises/exercise6/k8s/gitops
     kustomize: {}
 
