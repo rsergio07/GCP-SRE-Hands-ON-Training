@@ -52,9 +52,9 @@ spec:
         - name: DEPLOYMENT_METHOD
           value: "gitops"
         - name: GIT_COMMIT
-          value: "{{ .Values.gitCommit | default \"unknown\" }}"
+          value: "unknown"
         - name: DEPLOYMENT_ID
-          value: "{{ .Values.deploymentId | default \"gitops\" }}"
+          value: "gitops"
         - name: APP_NAME
           valueFrom:
             configMapKeyRef:
