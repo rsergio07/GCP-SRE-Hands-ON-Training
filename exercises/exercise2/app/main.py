@@ -2,6 +2,9 @@ import json
 import logging
 import time
 import structlog
+
+# Configure structlog for compatibility
+structlog.configure()
 import random
 from datetime import datetime
 from flask import Flask, jsonify, request
