@@ -1,40 +1,20 @@
 import os
-from typing import Dict, Any
 
 
 class Config:
-    """Application configuration class with GitOps deployment support."""
-
-    # Flask settings
-    FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
-    DEBUG = FLASK_ENV == 'development'
-
-    # Application settings
-    APP_NAME = os.environ.get('APP_NAME', 'sre-demo-app')
-    APP_VERSION = os.environ.get('APP_VERSION', '1.2.0')
-
-    # Server settings
-    HOST = os.environ.get('HOST', '0.0.0.0')
+    """Base configuration class with common settings."""
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
+    HOST = os.environ.get('HOST') or '0.0.0.0'
     PORT = int(os.environ.get('PORT', 8080))
+    DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    ENVIRONMENT = os.environ.get('ENVIRONMENT', 'production')
+    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
 
-    # Logging configuration
-    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
-    LOG_FORMAT = 'json' if FLASK_ENV == 'production' else 'console'
+    # Database configuration (for future exercises)
+    DATABASE_URL = os.environ.get('DATABASE_URL')
 
-    # GitOps specific configuration
-    DEPLOYMENT_METHOD = os.environ.get('DEPLOYMENT_METHOD', 'gitops')
-    GIT_COMMIT = os.environ.get('GIT_COMMIT', 'unknown')
-    DEPLOYMENT_ID = os.environ.get('DEPLOYMENT_ID', 'manual')
+    # Metrics configuration
+    METRICS_PORT = int(os.environ.get('METRICS_PORT', 8080))
 
-    @classmethod
-    def get_config_dict(cls) -> Dict[str, Any]:
-        """Return configuration as dictionary for logging."""
-        return {
-            'app_name': cls.APP_NAME,
-            'app_version': cls.APP_VERSION,
-            'flask_env': cls.FLASK_ENV,
-            'log_level': cls.LOG_LEVEL,
-            'deployment_method': cls.DEPLOYMENT_METHOD,
-            'git_commit': cls.GIT_COMMIT,
-            'deployment_id': cls.DEPLOYMENT_ID
-        }# Updated linting test - Mon Sep  8 15:52:10 UTC 2025
+    # Health check configuration
+    HEALTH_CHECK_PATH = os.environ.get('HEALTH_CHECK_PATH', '/health')
