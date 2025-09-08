@@ -85,10 +85,6 @@ sre-demo-app   2/2     2            2           4h
 
 ### ArgoCD Architecture
 
-**Essential Watching** (10 minutes):
-- [ArgoCD Architecture Explained](https://www.youtube.com/watch?v=c4v7wGqKcEY) by DevOps Toolkit - ArgoCD components and workflow
-
-**Reference Documentation**:
 - [ArgoCD Architecture](https://argo-cd.readthedocs.io/en/stable/operator-manual/architecture/) - Official architecture documentation
 
 ### Key Concepts You'll Learn
