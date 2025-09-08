@@ -8,4 +8,4 @@ resources:
 # Override mutable :latest with a stable tag for GitOps
 images:
   - name: us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app/sre-demo-app
-    newTag: main
+    newTag: latest
