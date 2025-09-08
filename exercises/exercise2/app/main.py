@@ -1,19 +1,19 @@
 import json
 import logging
 import time
-import structlog
-
-# Configure structlog for compatibility
-structlog.configure()
 import random
+import structlog
+import psutil
 from datetime import datetime
 from flask import Flask, jsonify, request
 from prometheus_client import (
     Counter, Histogram, Gauge, generate_latest,
     CollectorRegistry, CONTENT_TYPE_LATEST
 )
-import psutil
 from .config import Config
+
+# Configure structlog for compatibility
+structlog.configure()
 
 # Create Flask application with configuration
 app = Flask(__name__)
@@ -111,14 +111,17 @@ def after_request(response):
 
     # Record metrics
     duration = time.time() - request.start_time
+    endpoint = request.endpoint or 'unknown'
+
+    # Update Prometheus metrics
     REQUEST_DURATION.labels(
         method=request.method,
-        endpoint=request.endpoint or 'unknown'
+        endpoint=endpoint
     ).observe(duration)
 
     REQUEST_COUNT.labels(
         method=request.method,
-        endpoint=request.endpoint or 'unknown',
+        endpoint=endpoint,
         status=response.status_code
     ).inc()
 
