@@ -193,7 +193,9 @@ Set up command-line access for ArgoCD management:
 curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
 sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
 rm argocd-linux-amd64
+```
 
+```bash
 # Login to ArgoCD
 argocd login $ARGOCD_IP --username admin --password $ARGOCD_PASSWORD --insecure
 ```
@@ -219,8 +221,14 @@ Examine and understand the GitOps deployment configuration:
 ```bash
 # Review the GitOps deployment manifests
 ls -la k8s/gitops/
-cat k8s/gitops/deployment.yaml
+```
 
+```bash
+# Examine the ArgoCD deployment
+cat k8s/gitops/deployment.yaml
+```
+
+```bash
 # Examine the ArgoCD application configuration
 cat k8s/argocd/application.yaml
 ```
@@ -305,9 +313,14 @@ apps   Deployment  default    sre-demo-app       OutOfSync  Progressing        d
 ```bash
 # Trigger manual sync (common in development environments)
 argocd app sync sre-demo-gitops
+```
 
+```bash
 # Verify sync completed successfully
 kubectl get pods -l app=sre-demo-app
+```
+
+```bash
 kubectl get deployment sre-demo-app -o jsonpath='{.spec.template.spec.containers[0].image}'
 ```
 
@@ -336,13 +349,19 @@ Practice ArgoCD operations using CLI:
 ```bash
 # View current application status
 argocd app get sre-demo-gitops
+```
 
+```bash
 # Trigger manual sync to ensure latest state
 argocd app sync sre-demo-gitops
+```
 
+```bash
 # Check sync history
 argocd app history sre-demo-gitops
+```
 
+```bash
 # View application details in YAML format
 argocd app get sre-demo-gitops -o yaml
 ```
@@ -384,7 +403,9 @@ Make a controlled change to demonstrate GitOps workflow:
 ```bash
 # Scale the application to test GitOps synchronization
 sed -i 's/replicas: 2/replicas: 3/g' k8s/gitops/deployment.yaml
+```
 
+```bash
 # Verify the change
 grep "replicas:" k8s/gitops/deployment.yaml
 ```
@@ -402,7 +423,9 @@ Monitor ArgoCD detect and apply the change:
 ```bash
 # Watch ArgoCD sync the change (this may take 1-3 minutes)
 argocd app get sre-demo-gitops
+```
 
+```bash
 # Check if manual sync is needed
 argocd app sync sre-demo-gitops
 ```
@@ -412,7 +435,9 @@ Observe the scaling operation:
 ```bash
 # Verify that pods scaled to 3 replicas
 kubectl get pods -l app=sre-demo-app
+```
 
+```bash
 # Check deployment status
 kubectl get deployment sre-demo-app
 ```
@@ -442,7 +467,9 @@ Replace `<previous-revision-id>` with actual ID from history:
 ```bash
 # Rollback to previous revision (before scaling)
 argocd app rollback sre-demo-gitops <previous-revision-id>
+```
 
+```bash
 # Watch the rollback process
 kubectl get pods -l app=sre-demo-app
 ```
@@ -452,11 +479,15 @@ Test additional configuration changes:
 ```bash
 # Add a label to test ArgoCD change detection
 sed -i '/labels:/a\    environment: testing' k8s/gitops/deployment.yaml
+```
 
+```bash
 git add k8s/gitops/deployment.yaml
 git commit -m "gitops: Add environment label for testing"
 git push origin gitops-config-test
+```
 
+```bash
 # Sync and verify the label addition
 argocd app sync sre-demo-gitops
 ```
@@ -504,7 +535,9 @@ Test different sync policies:
 ```bash
 # Check current sync policy
 argocd app get sre-demo-gitops | grep -A 5 "Sync Policy"
+```
 
+```bash
 # Manually control sync behavior
 argocd app set sre-demo-gitops --sync-policy manual
 ```
@@ -524,7 +557,9 @@ Observe that ArgoCD detects but doesn't auto-sync:
 ```bash
 # ArgoCD detects but doesn't auto-sync
 argocd app get sre-demo-gitops
+```
 
+```bash
 # Manually trigger sync
 argocd app sync sre-demo-gitops
 ```
@@ -565,7 +600,9 @@ Demonstrate deployment state management:
 ```bash
 # Show current deployment state
 kubectl get deployment sre-demo-app -o yaml | grep -A 10 metadata:
+```
 
+```bash
 # Compare with GitOps desired state
 cat k8s/gitops/deployment.yaml | grep -A 10 metadata:
 ```
@@ -577,10 +614,14 @@ Clean up test configuration:
 git checkout main
 git branch -D test-manual-sync
 git push origin --delete test-manual-sync
+```
 
+```bash
 # Reset sync policy to automatic
 argocd app set sre-demo-gitops --sync-policy automated
+```
 
+```bash
 # Final sync to ensure clean state
 argocd app sync sre-demo-gitops
 ```
