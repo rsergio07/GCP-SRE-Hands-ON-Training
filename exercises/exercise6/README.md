@@ -78,7 +78,7 @@ Prometheus accessible at: http://35.9.23.171:9090
 ### GitOps and Continuous Deployment
 
 **Essential Watching** (15 minutes):
-- [GitOps Explained in 100 Seconds](https://www.youtube.com/watch?v=f5EpcWp0THw) by Fireship - Quick GitOps overview
+- [What is GitOps, How GitOps works and Why it's so useful](https://www.youtube.com/watch?v=f5EpcWp0THw) by TechWorld with Nana - Quick GitOps overview
 - [ArgoCD Tutorial for Beginners](https://www.youtube.com/watch?v=MeU5_k9ssrs) by TechWorld with Nana - ArgoCD implementation
 
 **Reference Documentation**:
@@ -88,7 +88,7 @@ Prometheus accessible at: http://35.9.23.171:9090
 ### SRE Deployment Practices
 
 **Essential Watching** (10 minutes):
-- [SRE Deployment Best Practices](https://www.youtube.com/watch?v=4xzs2mMDiUE) by Google Cloud - Production deployment patterns
+- [SRE Deployment Best Practices](https://www.youtube.com/watch?v=AWVTKBUnoIg) by ByteByteGo - Production deployment patterns
 
 **Reference Documentation**:
 - [Google SRE Book - Release Engineering](https://sre.google/sre-book/release-engineering/) - Production deployment practices
@@ -142,44 +142,50 @@ chmod +x scripts/setup-argocd.sh
 
 **Expected output:**
 ```
-[INFO] Creating ArgoCD namespace...
-[INFO] Installing ArgoCD components...
+[SUCCESS] ArgoCD installation manifest applied
 [INFO] Configuring LoadBalancer access...
-[INFO] Waiting for ArgoCD to be ready...
-[SUCCESS] ArgoCD installed successfully
+service/argocd-server-lb created
+[SUCCESS] LoadBalancer service configured
+[INFO] Waiting for ArgoCD components to be ready...
+deployment.apps/argocd-server condition met
+deployment.apps/argocd-repo-server condition met
+deployment.apps/argocd-dex-server condition met
+deployment.apps/argocd-applicationset-controller condition met
+[SUCCESS] ArgoCD components are ready
+[INFO] Waiting for LoadBalancer IP assignment...
+[SUCCESS] LoadBalancer IP assigned: 34.31.169.228
+ARGOCD_IP=34.31.169.228
+[INFO] Retrieving initial admin password...
+[SUCCESS] Initial admin password retrieved
+ARGOCD_PASSWORD=5yK1I0fkL2HyrsxV
+[INFO] ArgoCD installation completed!
+
+======================================================
+           ArgoCD Access Information
+======================================================
+URL: https://34.31.169.228
+Username: admin
+Password: PASSWORD
+
+Note: Accept the self-signed certificate in your browser
+======================================================
 ```
 
 **Wait for all ArgoCD components to be ready:**
+**ArgoCD deployment takes 3-5 minutes.** Wait until all pods show `Running` status before proceeding.
 
 ```bash
 # Monitor ArgoCD deployment
-kubectl get pods -n argocd -w
+kubectl get pods -n argocd
 ```
 
-**ArgoCD deployment takes 3-5 minutes.** Wait until all pods show `Running` status before proceeding.
+**Access the ArgoCD web interface** using the URL from your output (accept the self-signed certificate). The interface provides visual representation of applications, deployment status, and synchronization history.
 
-### Step 2: Access ArgoCD and Configure Authentication
-
-Get access credentials and configure ArgoCD for your repository:
-
-```bash
-# Get ArgoCD external access information
-export ARGOCD_IP=$(kubectl get service argocd-server-lb -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-export ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
-
-echo "ArgoCD Access Information:"
-echo "  URL: https://$ARGOCD_IP"
-echo "  Username: admin"
-echo "  Password: $ARGOCD_PASSWORD"
-```
-
-**Expected output:**
-```
-ArgoCD Access Information:
-  URL: https://35.9.23.172
-  Username: admin
-  Password: Xy9K-8mN3P-vQ2R4S
-```
+**Test web interface access:**
+- Navigate to the ARGOCD_IP URL from your terminal output
+- Accept the self-signed certificate when prompted by your browser
+- Login with username `admin` and the password from your terminal output
+- Verify you can see the ArgoCD dashboard (should be empty initially)
 
 **Install ArgoCD CLI for command-line management:**
 
@@ -199,8 +205,6 @@ argocd login $ARGOCD_IP --username admin --password $ARGOCD_PASSWORD --insecure
 Context '$ARGOCD_IP' updated
 ```
 
-**Access the ArgoCD web interface** using the URL from your output (accept the self-signed certificate). The interface provides visual representation of applications, deployment status, and synchronization history.
-
 ---
 
 ## Implementing GitOps Deployment Pipelines
@@ -209,7 +213,7 @@ Context '$ARGOCD_IP' updated
 
 This section establishes the automated pipeline that connects your application code changes to deployment updates through GitOps principles, integrating with your existing GitHub Actions workflow.
 
-### Step 3: Configure GitOps Repository Structure
+### Step 2: Configure GitOps Repository Structure
 
 Examine and understand the GitOps deployment configuration:
 
@@ -232,9 +236,33 @@ cat k8s/argocd/application.yaml
 - **Automated Synchronization**: ArgoCD applies changes without manual intervention
 - **Complete Auditability**: All changes tracked through Git commit history
 
-### Step 4: Create ArgoCD Application
+### Step 3: Create ArgoCD Application
 
 Configure ArgoCD to manage your SRE demo application:
+
+**Important:** Before applying the ArgoCD application, update the repository URL to match your GitHub repository.
+
+**Edit `k8s/argocd/application.yaml` line 16:**
+
+```yaml
+# CURRENT:
+repoURL: https://github.com/YOUR_USERNAME/kubernetes-sre-cloud-native
+
+# SHOULD BE (replace with your actual GitHub username):
+repoURL: https://github.com/your-actual-username/kubernetes-sre-cloud-native
+```
+
+**Also update the container image reference in `k8s/gitops/deployment.yaml` line 38:**
+
+```yaml
+# CURRENT:
+image: gcr.io/PROJECT_ID/sre-demo-app:latest
+
+# SHOULD BE (replace with your actual Google Cloud Platform project ID):
+image: us-central1-docker.pkg.dev/your-project-id/sre-demo-app/sre-demo-app:latest
+```
+
+**Apply the ArgoCD application configuration:**
 
 ```bash
 # Apply the ArgoCD application configuration
@@ -250,19 +278,57 @@ application.argoproj.io/sre-demo-gitops created
 
 ```bash
 # Check application status
-argocd app list
 argocd app get sre-demo-gitops
 ```
 
 **Expected output:**
 ```
-NAME              CLUSTER                         NAMESPACE  PROJECT  STATUS  HEALTH   SYNCPOLICY  CONDITIONS
-sre-demo-gitops   https://kubernetes.default.svc  default    default  Synced  Healthy  Auto-Prune  <none>
+Name:               argocd/sre-demo-gitops
+Project:            default
+Server:             https://kubernetes.default.svc
+Namespace:          default
+URL:                https://34.31.169.228/applications/sre-demo-gitops
+Source:
+- Repo:             https://github.com/rsergio07/kubernetes-sre-cloud-native
+  Target:           HEAD
+  Path:             exercises/exercise6/k8s/gitops
+SyncWindow:         Sync Allowed
+Sync Policy:        Automated (Prune)
+Sync Status:        OutOfSync from HEAD (4a9a460)
+Health Status:      Progressing
+
+GROUP  KIND        NAMESPACE  NAME               STATUS     HEALTH       HOOK  MESSAGE
+apps   Deployment  default    sre-demo-app       OutOfSync  Progressing        deployment.apps/sre-demo-app configured
+       Service     default    sre-demo-headless  Synced     Healthy            
+       Service     default    sre-demo-service   Synced     Healthy            
 ```
 
-**In the ArgoCD web interface,** you should now see your application with its current deployment status, resource health, and synchronization state.
+**Access the ArgoCD application view:**
 
-### Step 5: Enhance GitHub Actions for GitOps Integration
+Navigate to the URL shown in the `argocd app get` output (e.g., `https://ARGOCD_IP URL/applications/sre-demo-gitops`).
+
+**Understanding ArgoCD Application Status**
+
+The ArgoCD web interface shows your GitOps deployment in action. Key status indicators you'll observe:
+
+**Sync Status Progression:**
+- **🟡 OutOfSync** → **🟢 Sync OK**: ArgoCD detects Git changes and applies them to the cluster
+- **🔄 Progressing** → **🟢 Healthy**: Kubernetes resources are being created/updated and reaching ready state
+
+**Resource Tree View** displays your application components:
+- **Deployment** (sre-demo-app): Your application pods with replica management
+- **Services** (sre-demo-service, sre-demo-headless): Network access and service discovery
+- **Individual Pods**: Each pod instance with age and status indicators
+
+**Visual Cues in the Interface:**
+- **Green indicators**: Resources are healthy and synchronized
+- **Blue/Gray pods**: Individual application instances managed by the deployment
+- **Resource hierarchy**: Shows parent-child relationships between Kubernetes resources
+- **Timeline information**: Displays how long resources have been running
+
+**This demonstrates GitOps declarative management** - ArgoCD continuously monitors your Git repository and ensures the cluster state matches your defined configuration. The visual interface provides real-time insight into deployment health and synchronization status that would require multiple kubectl commands to gather manually.
+
+### Step 4: Enhance GitHub Actions for GitOps Integration
 
 Review and deploy the enhanced CI/CD pipeline that integrates with ArgoCD:
 
@@ -315,7 +381,7 @@ git push origin --delete exercise6-gitops-test
 
 This section implements safety mechanisms that prevent problematic deployments from degrading user experience by using your existing monitoring infrastructure to validate SLO compliance.
 
-### Step 6: Implement SLO-Based Deployment Validation
+### Step 5: Implement SLO-Based Deployment Validation
 
 Configure deployment validation that uses your Prometheus monitoring to ensure deployments maintain service reliability:
 
@@ -359,7 +425,7 @@ curl -s "http://$PROMETHEUS_IP:9090/api/v1/query?query=sum(rate(http_requests_to
 
 This confirms your availability SLO is currently at 100%, providing the baseline for deployment validation.
 
-### Step 7: Configure Automated Deployment Health Checks
+### Step 6: Configure Automated Deployment Health Checks
 
 Set up comprehensive health validation for new deployments:
 
@@ -396,7 +462,7 @@ chmod +x scripts/deployment-health-check.sh
 
 This section implements automated rollback systems that respond to SLO violations by reverting to known good application versions, minimizing user impact without requiring human intervention.
 
-### Step 8: Implement SLO-Based Rollback Automation
+### Step 7: Implement SLO-Based Rollback Automation
 
 Configure rollback automation that monitors SLO compliance and triggers recovery when deployments cause service degradation:
 
@@ -444,7 +510,7 @@ chmod +x scripts/rollback-automation.sh
 [TEST] Rollback automation logic validated successfully
 ```
 
-### Step 9: Test Rollback with Controlled Deployment Failure
+### Step 8: Test Rollback with Controlled Deployment Failure
 
 Simulate a deployment issue to validate rollback automation:
 
@@ -502,7 +568,7 @@ rm k8s/gitops/deployment-backup.yaml
 
 This section tests the complete GitOps pipeline from code change through deployment validation to ensure all components work together reliably.
 
-### Step 10: Execute Full GitOps Deployment Test
+### Step 9: Execute Full GitOps Deployment Test
 
 Test the complete workflow with a real application change:
 
@@ -535,7 +601,7 @@ argocd app sync sre-demo-gitops --watch
 4. **Deployment validation** confirms SLO compliance
 5. **Application update** completes successfully
 
-### Step 11: Verify Deployment Success and Monitoring Integration
+### Step 10: Verify Deployment Success and Monitoring Integration
 
 Confirm that the deployment completed successfully and monitoring continues to function:
 
@@ -593,7 +659,7 @@ curl -s "http://$PROMETHEUS_IP:9090/api/v1/query?query=up{job=\"sre-demo-app\"}"
 ]
 ```
 
-### Step 12: Validate GitOps Audit Trail and Operational Benefits
+### Step 11: Validate GitOps Audit Trail and Operational Benefits
 
 Examine the audit trail and operational improvements provided by GitOps:
 
