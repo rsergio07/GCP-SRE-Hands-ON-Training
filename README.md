@@ -86,7 +86,7 @@ Detailed setup instructions are available in the [installation guide](installati
 | [Exercise&nbsp;3](exercises/exercise3/) | Kubernetes Deployment | 120 min | GKE, kubectl, Service Management |
 | [Exercise&nbsp;4](exercises/exercise4/) | Cloud Monitoring Stack | 120 min | Prometheus, Cloud Monitoring, Dashboards |
 | [Exercise&nbsp;5](exercises/exercise5/) | Alerting and Response | 90 min | Alert Policies, SLOs, Incident Management |
-| [Exercise&nbsp;6](exercises/exercise6/) | Production CI/CD | 120 min | GitOps, Automated Deployments, Rollbacks |
+| [Exercise&nbsp;6](exercises/exercise6/) | ArgoCD GitOps Deployment Management | 120 min | GitOps, Automated Deployments, Rollbacks |
 | [Exercise&nbsp;7](exercises/exercise7/) | Production Readiness | 120 min | Security, Cost Optimization, DR |
 | [Exercise&nbsp;8](exercises/exercise8/) | Advanced SRE Operations | 90 min | Chaos Engineering, Performance Optimization |
 
