@@ -210,6 +210,23 @@ Note: Accept the self-signed certificate in your browser
 ======================================================
 ```
 
+# Retrieve ArgoCD Credentials and URL
+
+> If you ever need to retrieve the ArgoCD credentials and access URL, you can run the following commands:
+
+```bash
+# Get ArgoCD IP and password together
+export ARGOCD_IP=$(kubectl get service argocd-server-lb -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+export ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+
+echo "ArgoCD Access Information:"
+echo "URL: https://$ARGOCD_IP"
+echo "Username: admin"
+echo "Password: $ARGOCD_PASSWORD"
+```
+
+> This will print the ArgoCD access URL, along with the username and password needed to log in.
+
 **Understanding the deployment process:** ArgoCD deployment takes 3-5 minutes as the system provisions LoadBalancer resources, initializes authentication systems, and establishes repository connections. The automated script handles all complexity while providing clear progress indicators and troubleshooting information.
 
 **Monitor ArgoCD deployment components:**
@@ -709,6 +726,45 @@ Synchronization policies provide operational flexibility for different deploymen
    Switch the sync policy back to Automated mode so ArgoCD resumes enforcing Git state automatically through continuous reconciliation.
 
 **Operational policy benefits:** Manual sync policies enable controlled deployment timing during critical operations, provide approval gates for high-risk changes, and support staged rollout procedures while maintaining GitOps audit trails and rollback capabilities.
+
+## Step 9: Environment Cleanup
+
+Restore the environment to its original state by scaling back to 2 replicas:
+
+```bash
+# Scale back to original configuration
+sed -i 's/replicas: 3/replicas: 2/g' k8s/gitops/deployment.yaml
+```
+
+```bash
+# Commit and push the cleanup change
+git add k8s/gitops/deployment.yaml
+git commit -m "gitops: Restore original replica count to 2"
+git push origin main
+```
+
+```bash
+# Force ArgoCD synchronization
+argocd app sync sre-demo-gitops
+```
+
+```bash
+# Verify cleanup completed
+kubectl get deployment sre-demo-app -o jsonpath='{.spec.replicas}' && echo
+```
+
+```bash
+# Verify your application deployment from previous exercises
+kubectl get pods -l app=sre-demo-app
+```
+
+**Expected output:**
+
+```
+NAME                            READY   STATUS    RESTARTS   AGE
+sre-demo-app-7458c58c57-abc34   1/1     Running   0          4h
+sre-demo-app-7458c58c57-def56   1/1     Running   0          4h
+```
 
 ---
 
