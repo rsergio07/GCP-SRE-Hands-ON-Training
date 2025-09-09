@@ -27,7 +27,7 @@ A comprehensive, hands-on course that transforms developers into production-read
 
 ## Introduction
 
-This course teaches Kubernetes through the comprehensive lens of **Site Reliability Engineering (SRE)**, using Google Cloud Platform and cloud-based development environments to build production-ready systems. Students develop a complete understanding of modern operational practices while constructing a **enterprise-grade monitoring and deployment platform** that demonstrates industry-standard reliability engineering principles.
+This course teaches Kubernetes through the comprehensive lens of **Site Reliability Engineering (SRE)**, using Google Cloud Platform and cloud-based development environments to build production-ready systems. Students develop a complete understanding of modern operational practices while constructing an **enterprise-grade monitoring and deployment platform** that demonstrates industry-standard reliability engineering principles.
 
 ### What You'll Build: A Complete SRE Platform
 
@@ -43,16 +43,16 @@ Your journey culminates in a comprehensive, production-ready platform that inclu
 * **Intelligent alerting systems** with SLO-based policies that focus on user impact rather than system symptoms, reducing noise while ensuring critical issues receive immediate attention
 * **Chaos engineering validation** that proves system resilience through controlled failure injection and systematic testing of recovery procedures
 
-**Production Readiness:**
-* **Enterprise security hardening** with defense-in-depth strategies including network policies, pod security standards, RBAC controls, and comprehensive secret management
-* **Cost optimization frameworks** with intelligent resource management, automated scaling policies, and financial governance that balance performance requirements with economic efficiency
-* **Disaster recovery capabilities** with automated backup procedures, multi-region deployment strategies, and tested recovery processes that ensure business continuity
+**Advanced Operations:**
+* **Performance optimization** based on systematic analysis that improves user experience while maintaining operational efficiency
+* **Predictive capacity planning** that enables proactive scaling decisions and prevents resource constraints before they impact users
+* **Advanced monitoring patterns** that correlate technical metrics with business outcomes and provide predictive insights for continuous improvement
 
 ### Why This Approach Matters
 
 **Industry Relevance**: This course teaches the same tools, practices, and operational patterns used by leading technology companies to manage production systems at scale. Students graduate with immediately applicable skills that align with current industry expectations for SRE roles.
 
-**Production Focus**: Rather than simplified tutorial examples, every component is designed for actual production deployment with proper security controls, cost optimization, and operational procedures that scale with business growth and regulatory requirements.
+**Production Focus**: Rather than simplified tutorial examples, every component is designed for actual production deployment with proper operational procedures that scale with business growth and regulatory requirements.
 
 **Cloud-Native Excellence**: By using cloud-based development and deployment from day one, students learn modern operational practices without the complexity and inconsistency of local development environments while gaining experience with enterprise-grade cloud platforms.
 
@@ -69,13 +69,13 @@ By completing this comprehensive course, you will demonstrate the ability to:
 
 **Advanced Operational Excellence:**
 4. **Build automated deployment pipelines** using GitOps principles that eliminate manual errors, provide complete audit trails, and enable rapid rollback capabilities for incident recovery
-5. **Optimize costs and security** for cloud-native workloads through intelligent resource management, comprehensive security hardening, and governance frameworks that balance performance with economic efficiency
-6. **Troubleshoot complex issues** in containerized environments using systematic approaches, comprehensive logging analysis, and performance optimization techniques that minimize mean time to resolution
+5. **Troubleshoot complex issues** in containerized environments using systematic approaches, comprehensive logging analysis, and performance optimization techniques that minimize mean time to resolution
+6. **Validate system resilience** through chaos engineering experiments that prove recovery capabilities and identify weaknesses before they impact users in production environments
 
 **Enterprise Production Readiness:**
-7. **Implement disaster recovery procedures** that ensure business continuity through automated backup systems, multi-region deployment strategies, and tested recovery processes that meet RTO and RPO requirements
-8. **Validate system resilience** through chaos engineering experiments that prove recovery capabilities and identify weaknesses before they impact users in production environments
-9. **Establish predictive operational practices** through capacity planning, performance optimization, and advanced monitoring that enable proactive problem prevention rather than reactive incident response
+7. **Establish predictive operational practices** through capacity planning, performance optimization, and advanced monitoring that enable proactive problem prevention rather than reactive incident response
+8. **Implement advanced monitoring patterns** that correlate technical performance with business outcomes and provide predictive insights for continuous improvement
+9. **Optimize performance and costs** through data-driven analysis, intelligent resource management, and systematic optimization approaches that balance efficiency with reliability requirements
 
 ---
 
@@ -139,11 +139,10 @@ Detailed setup instructions with troubleshooting guidance are available in the [
 | [Exercise&nbsp;3](exercises/exercise3/) | Kubernetes Deployment | 2 hours | GKE, kubectl, Service Management, Autoscaling | Deploy to production Kubernetes, configure load balancing, implement autoscaling policies |
 | [Exercise&nbsp;4](exercises/exercise4/) | Cloud Monitoring Stack | 2 hours | Prometheus, Cloud Monitoring, Custom Dashboards | Build comprehensive monitoring, create operational dashboards, establish observability practices |
 | [Exercise&nbsp;5](exercises/exercise5/) | Alerting and Response | 1.5 hours | Alert Policies, SLOs, Incident Management | Implement intelligent alerting, define SLOs, establish incident response procedures |
-| [Exercise&nbsp;6](exercises/exercise6/) | ArgoCD GitOps Deployment Management | 2 hours | GitOps, Automated Deployments, Rollback Procedures | Master GitOps workflows, automate deployments, implement rollback capabilities |
-| [Exercise&nbsp;7](exercises/exercise7/) | Production Readiness | 2 hours | Security Hardening, Cost Optimization, Disaster Recovery | Achieve production readiness, implement security controls, establish disaster recovery |
-| [Exercise&nbsp;8](exercises/exercise8/) | Advanced SRE Operations | 1.5 hours | Chaos Engineering, Performance Optimization, Predictive Operations | Validate system resilience, optimize performance, implement predictive operations |
+| [Exercise&nbsp;6](exercises/exercise6/) | Production CI/CD | 2 hours | GitOps, ArgoCD, Automated Deployments | Master GitOps workflows, automate deployments, implement rollback capabilities |
+| [Exercise&nbsp;7](exercises/exercise7/) | Advanced SRE Operations | 2 hours | Chaos Engineering, Performance Optimization, Predictive Operations | Validate system resilience, optimize performance, implement predictive operations |
 
-**Total Investment**: ~16 hours of intensive, hands-on learning with immediate practical application
+**Total Investment**: ~14 hours of intensive, hands-on learning with immediate practical application
 
 ### Progressive Complexity Design
 
@@ -153,7 +152,7 @@ Detailed setup instructions with troubleshooting guidance are available in the [
 
 **Operational Excellence (Exercises 5-6)**: Adds intelligent alerting and automated deployment workflows that enable reliable, efficient operations
 
-**Production Maturity (Exercises 7-8)**: Achieves enterprise-grade security, optimization, and advanced operational practices that demonstrate complete SRE mastery
+**Advanced Maturity (Exercise 7)**: Achieves enterprise-grade resilience testing, performance optimization, and predictive operational practices that demonstrate complete SRE mastery
 
 ---
 
@@ -163,19 +162,19 @@ Detailed setup instructions with troubleshooting guidance are available in the [
 
 **Intensive Learning Track (2 weeks)**:
 * **Week 1**: Exercises 1-4 (Foundation, Containerization, Kubernetes, Monitoring)
-* **Week 2**: Exercises 5-8 (Alerting, GitOps, Production Readiness, Advanced Operations)
+* **Week 2**: Exercises 5-7 (Alerting, GitOps, Advanced Operations)
 
 **Standard Learning Track (4 weeks)**:
 * **Week 1**: Exercises 1-2 (Cloud development environment, container builds)
 * **Week 2**: Exercises 3-4 (Kubernetes deployment, monitoring infrastructure)
 * **Week 3**: Exercises 5-6 (Alerting systems, GitOps automation)
-* **Week 4**: Exercises 7-8 (Production readiness, advanced operations)
+* **Week 4**: Exercise 7 (Advanced operations, chaos engineering)
 
-**Extended Learning Track (8 weeks)**:
+**Extended Learning Track (7 weeks)**:
 * **Weeks 1-2**: Exercises 1-2 with additional exploration and experimentation
 * **Weeks 3-4**: Exercises 3-4 with deep-dive into Kubernetes concepts and monitoring patterns
 * **Weeks 5-6**: Exercises 5-6 with comprehensive alerting design and GitOps best practices
-* **Weeks 7-8**: Exercises 7-8 with advanced security, optimization, and chaos engineering
+* **Week 7**: Exercise 7 with advanced chaos engineering and performance optimization
 
 ### Self-Paced Learning Support
 
@@ -215,10 +214,10 @@ Each exercise includes comprehensive verification questions, troubleshooting gui
 
 ### Advanced Operations Tools
 **Production Readiness Platform**:
-* **Network Policies** - Kubernetes-native network security and micro-segmentation
-* **Pod Security Standards** - Container security controls and compliance frameworks
 * **Horizontal Pod Autoscaler** - Intelligent scaling based on multiple metrics
-* **Vertical Pod Autoscaler** - Automated resource optimization and right-sizing
+* **Performance monitoring** - Comprehensive analysis and optimization capabilities
+* **Capacity planning** - Predictive analysis and resource forecasting
+* **Advanced observability** - Business KPI correlation and predictive insights
 
 ---
 
@@ -254,7 +253,7 @@ These estimates assume intelligent resource management and cost optimization pra
 
 ### Cost Optimization Learning
 
-The course teaches comprehensive cost optimization strategies including intelligent autoscaling policies, resource right-sizing based on actual usage, spot instance utilization for batch workloads, and monitoring-driven optimization that reduces costs while maintaining performance and reliability requirements.
+The course teaches comprehensive cost optimization strategies including intelligent autoscaling policies, resource right-sizing based on actual usage, and monitoring-driven optimization that reduces costs while maintaining performance and reliability requirements.
 
 ---
 
@@ -267,7 +266,7 @@ The course teaches comprehensive cost optimization strategies including intellig
 **Reliability as a Primary Concern**: Unlike traditional development courses that add operational considerations as an afterthought, this course integrates observability, reliability, and operational excellence from the first exercise. Students learn to think like Site Reliability Engineers, prioritizing user experience and system reliability throughout the development and deployment process.
 
 ### Production-Ready Practices Integration
-**Enterprise-Grade Standards**: Every component is designed for actual production deployment with proper security controls, cost optimization, governance frameworks, and operational procedures. Students gain experience with the same tools, configurations, and practices used by leading technology companies to manage production systems at scale.
+**Enterprise-Grade Standards**: Every component is designed for actual production deployment with proper operational procedures. Students gain experience with the same tools, configurations, and practices used by leading technology companies to manage production systems at scale.
 
 ### Hands-On Learning Focus
 **Minimal Theory, Maximum Implementation**: While foundational concepts are explained thoroughly, the primary learning mechanism is hands-on implementation with immediate feedback. Students build, deploy, monitor, and optimize real systems rather than studying abstract concepts, ensuring practical skills that transfer directly to production environments.
@@ -283,21 +282,21 @@ By successfully completing this course, you will have demonstrated the following
 
 ### Technical Implementation Skills
 **Production Deployment Mastery**:
-* Deploy and manage production-ready Kubernetes applications with proper resource management, security controls, and automated scaling policies
-* Implement comprehensive observability including metrics collection, structured logging, distributed tracing, and custom dashboards that provide actionable operational insights
+* Deploy and manage production-ready Kubernetes applications with proper resource management and automated scaling policies
+* Implement comprehensive observability including metrics collection, structured logging, and custom dashboards that provide actionable operational insights
 * Build and maintain automated CI/CD pipelines with GitOps principles that eliminate manual deployment errors while providing complete audit trails and rollback capabilities
 
 ### Operational Excellence Capabilities
 **SRE Practice Implementation**:
 * Design and implement intelligent alerting strategies based on SLOs that focus on user impact while preventing alert fatigue and enabling rapid incident response
-* Establish and validate disaster recovery procedures that ensure business continuity through automated backup systems, multi-region deployment strategies, and tested recovery processes
-* Optimize costs and security for cloud-native workloads through intelligent resource management, comprehensive security hardening, and governance frameworks that scale with business growth
+* Establish chaos engineering practices that validate system resilience through controlled failure injection and systematic testing of recovery procedures
+* Optimize performance and costs through intelligent resource management and data-driven optimization approaches that balance efficiency with reliability requirements
 
 ### Advanced Problem-Solving Abilities
 **Production Troubleshooting Expertise**:
 * Troubleshoot complex issues in distributed containerized environments using systematic approaches, comprehensive logging analysis, and performance optimization techniques
-* Implement chaos engineering practices that validate system resilience through controlled failure injection and systematic testing of recovery procedures
-* Establish predictive operational practices through capacity planning, performance optimization, and advanced monitoring that enable proactive problem prevention
+* Implement predictive operational practices through capacity planning, performance optimization, and advanced monitoring that enable proactive problem prevention
+* Establish advanced monitoring patterns that correlate technical performance with business outcomes and provide predictive insights for continuous improvement
 
 ### Portfolio and Career Advancement
 **Demonstrable Professional Value**:
