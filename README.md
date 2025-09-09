@@ -15,12 +15,8 @@ A comprehensive, hands-on course that transforms developers into production-read
 * [Course Structure](#course-structure)
 * [Learning Path](#learning-path)
 * [Key Technologies](#key-technologies)
-* [Cost Management](#cost-management)
-* [Course Philosophy](#course-philosophy)
 * [Success Metrics](#success-metrics)
 * [Community and Contributions](#community-and-contributions)
-* [Support](#support)
-* [Acknowledgments](#acknowledgments)
 * [License](#license)
 
 ---
@@ -41,12 +37,7 @@ Your journey culminates in a comprehensive, production-ready platform that inclu
 **Automation and Reliability:**
 * **GitOps deployment automation** with ArgoCD providing declarative infrastructure management, automated synchronization, and complete audit trails for all configuration changes
 * **Intelligent alerting systems** with SLO-based policies that focus on user impact rather than system symptoms, reducing noise while ensuring critical issues receive immediate attention
-* **Chaos engineering validation** that proves system resilience through controlled failure injection and systematic testing of recovery procedures
-
-**Advanced Operations:**
-* **Performance optimization** based on systematic analysis that improves user experience while maintaining operational efficiency
-* **Predictive capacity planning** that enables proactive scaling decisions and prevents resource constraints before they impact users
-* **Advanced monitoring patterns** that correlate technical metrics with business outcomes and provide predictive insights for continuous improvement
+* **Comprehensive incident response** capabilities with documented procedures and automated recovery mechanisms that minimize downtime and service disruption
 
 ### Why This Approach Matters
 
@@ -70,12 +61,7 @@ By completing this comprehensive course, you will demonstrate the ability to:
 **Advanced Operational Excellence:**
 4. **Build automated deployment pipelines** using GitOps principles that eliminate manual errors, provide complete audit trails, and enable rapid rollback capabilities for incident recovery
 5. **Troubleshoot complex issues** in containerized environments using systematic approaches, comprehensive logging analysis, and performance optimization techniques that minimize mean time to resolution
-6. **Validate system resilience** through chaos engineering experiments that prove recovery capabilities and identify weaknesses before they impact users in production environments
-
-**Enterprise Production Readiness:**
-7. **Establish predictive operational practices** through capacity planning, performance optimization, and advanced monitoring that enable proactive problem prevention rather than reactive incident response
-8. **Implement advanced monitoring patterns** that correlate technical performance with business outcomes and provide predictive insights for continuous improvement
-9. **Optimize performance and costs** through data-driven analysis, intelligent resource management, and systematic optimization approaches that balance efficiency with reliability requirements
+6. **Establish production-ready operational practices** through comprehensive monitoring, automated recovery procedures, and systematic incident response that ensures reliable service delivery
 
 ---
 
@@ -140,9 +126,8 @@ Detailed setup instructions with troubleshooting guidance are available in the [
 | [Exercise&nbsp;4](exercises/exercise4/) | Cloud Monitoring Stack | 2 hours | Prometheus, Cloud Monitoring, Custom Dashboards | Build comprehensive monitoring, create operational dashboards, establish observability practices |
 | [Exercise&nbsp;5](exercises/exercise5/) | Alerting and Response | 1.5 hours | Alert Policies, SLOs, Incident Management | Implement intelligent alerting, define SLOs, establish incident response procedures |
 | [Exercise&nbsp;6](exercises/exercise6/) | Production CI/CD | 2 hours | GitOps, ArgoCD, Automated Deployments | Master GitOps workflows, automate deployments, implement rollback capabilities |
-| [Exercise&nbsp;7](exercises/exercise7/) | Advanced SRE Operations | 2 hours | Chaos Engineering, Performance Optimization, Predictive Operations | Validate system resilience, optimize performance, implement predictive operations |
 
-**Total Investment**: ~14 hours of intensive, hands-on learning with immediate practical application
+**Total Investment**: ~12 hours of intensive, hands-on learning with immediate practical application
 
 ### Progressive Complexity Design
 
@@ -150,9 +135,7 @@ Detailed setup instructions with troubleshooting guidance are available in the [
 
 **Core Platform (Exercises 3-4)**: Implements production Kubernetes deployment and comprehensive monitoring that provides operational visibility and control
 
-**Operational Excellence (Exercises 5-6)**: Adds intelligent alerting and automated deployment workflows that enable reliable, efficient operations
-
-**Advanced Maturity (Exercise 7)**: Achieves enterprise-grade resilience testing, performance optimization, and predictive operational practices that demonstrate complete SRE mastery
+**Operational Excellence (Exercises 5-6)**: Adds intelligent alerting and automated deployment workflows that enable reliable, efficient operations at production scale
 
 ---
 
@@ -160,21 +143,19 @@ Detailed setup instructions with troubleshooting guidance are available in the [
 
 ### Flexible Scheduling Options
 
-**Intensive Learning Track (2 weeks)**:
+**Intensive Learning Track (1.5 weeks)**:
 * **Week 1**: Exercises 1-4 (Foundation, Containerization, Kubernetes, Monitoring)
-* **Week 2**: Exercises 5-7 (Alerting, GitOps, Advanced Operations)
+* **Days 8-10**: Exercises 5-6 (Alerting, GitOps)
 
-**Standard Learning Track (4 weeks)**:
+**Standard Learning Track (3 weeks)**:
 * **Week 1**: Exercises 1-2 (Cloud development environment, container builds)
 * **Week 2**: Exercises 3-4 (Kubernetes deployment, monitoring infrastructure)
 * **Week 3**: Exercises 5-6 (Alerting systems, GitOps automation)
-* **Week 4**: Exercise 7 (Advanced operations, chaos engineering)
 
-**Extended Learning Track (7 weeks)**:
+**Extended Learning Track (6 weeks)**:
 * **Weeks 1-2**: Exercises 1-2 with additional exploration and experimentation
 * **Weeks 3-4**: Exercises 3-4 with deep-dive into Kubernetes concepts and monitoring patterns
 * **Weeks 5-6**: Exercises 5-6 with comprehensive alerting design and GitOps best practices
-* **Week 7**: Exercise 7 with advanced chaos engineering and performance optimization
 
 ### Self-Paced Learning Support
 
@@ -210,69 +191,13 @@ Each exercise includes comprehensive verification questions, troubleshooting gui
 * **Grafana-compatible dashboards** - Comprehensive visualization and alerting interface
 * **Google Cloud Monitoring** - Managed monitoring service with advanced analytics
 * **ArgoCD** - GitOps continuous deployment with comprehensive audit trails
-* **Litmus Chaos Engineering** - Kubernetes-native chaos engineering platform
 
-### Advanced Operations Tools
-**Production Readiness Platform**:
+### Production Operations Tools
+**Reliability Engineering Platform**:
 * **Horizontal Pod Autoscaler** - Intelligent scaling based on multiple metrics
-* **Performance monitoring** - Comprehensive analysis and optimization capabilities
-* **Capacity planning** - Predictive analysis and resource forecasting
-* **Advanced observability** - Business KPI correlation and predictive insights
-
----
-
-## Cost Management
-
-### Free Tier Utilization Strategy
-
-This course is designed to operate entirely within Google Cloud Platform's generous free tier offerings:
-
-**Compute Resources**:
-* **GKE Autopilot**: Pay-per-pod pricing with automatic scaling to zero during inactivity
-* **Cloud Build**: 120 free build minutes per day (sufficient for course exercises)
-* **Codespaces**: GitHub provides substantial free hours for educational use
-
-**Storage and Registry**:
-* **Artifact Registry**: 0.5 GB free storage (adequate for course container images)
-* **Cloud Storage**: 5 GB free storage for backups and configuration data
-* **Persistent Disks**: Minimal usage through ephemeral configurations
-
-**Monitoring and Operations**:
-* **Cloud Monitoring**: Generous free tier covering course monitoring requirements
-* **Cloud Logging**: Substantial free allotment for structured logging and analysis
-* **Cloud Alerting**: Free notification policies and alert routing
-
-### Post-Course Production Costs
-
-**Estimated monthly costs for continued platform operation**:
-* **Small production workload**: $30-50/month
-* **Medium enterprise usage**: $100-200/month
-* **Large-scale deployment**: $300-500/month
-
-These estimates assume intelligent resource management and cost optimization practices taught throughout the course, making production deployment economically viable for organizations of all sizes.
-
-### Cost Optimization Learning
-
-The course teaches comprehensive cost optimization strategies including intelligent autoscaling policies, resource right-sizing based on actual usage, and monitoring-driven optimization that reduces costs while maintaining performance and reliability requirements.
-
----
-
-## Course Philosophy
-
-### Cloud-First Development Excellence
-**Complete Cloud Integration**: All development, testing, and deployment occurs in cloud environments, eliminating local setup complexity while teaching modern operational practices used by enterprise organizations. This approach provides consistency across different operating systems and hardware configurations while introducing students to cloud-native development workflows from day one.
-
-### SRE-Driven Learning Methodology
-**Reliability as a Primary Concern**: Unlike traditional development courses that add operational considerations as an afterthought, this course integrates observability, reliability, and operational excellence from the first exercise. Students learn to think like Site Reliability Engineers, prioritizing user experience and system reliability throughout the development and deployment process.
-
-### Production-Ready Practices Integration
-**Enterprise-Grade Standards**: Every component is designed for actual production deployment with proper operational procedures. Students gain experience with the same tools, configurations, and practices used by leading technology companies to manage production systems at scale.
-
-### Hands-On Learning Focus
-**Minimal Theory, Maximum Implementation**: While foundational concepts are explained thoroughly, the primary learning mechanism is hands-on implementation with immediate feedback. Students build, deploy, monitor, and optimize real systems rather than studying abstract concepts, ensuring practical skills that transfer directly to production environments.
-
-### Progressive Complexity Management
-**Systematic Skill Building**: Each exercise builds systematically on previous knowledge while introducing new concepts at an appropriate pace. This approach ensures students develop deep understanding of fundamental concepts before tackling advanced topics, creating a solid foundation for continued learning and professional growth.
+* **Service Level Indicators (SLIs)** - Comprehensive measurement of user experience
+* **Error Budget Management** - Data-driven approach to balancing reliability and velocity
+* **Incident Response Automation** - Streamlined procedures for rapid problem resolution
 
 ---
 
@@ -289,14 +214,14 @@ By successfully completing this course, you will have demonstrated the following
 ### Operational Excellence Capabilities
 **SRE Practice Implementation**:
 * Design and implement intelligent alerting strategies based on SLOs that focus on user impact while preventing alert fatigue and enabling rapid incident response
-* Establish chaos engineering practices that validate system resilience through controlled failure injection and systematic testing of recovery procedures
-* Optimize performance and costs through intelligent resource management and data-driven optimization approaches that balance efficiency with reliability requirements
+* Establish monitoring and observability practices that provide comprehensive visibility into system health and user experience
+* Implement automated deployment workflows that enable reliable, repeatable deployments with rapid rollback capabilities
 
 ### Advanced Problem-Solving Abilities
 **Production Troubleshooting Expertise**:
 * Troubleshoot complex issues in distributed containerized environments using systematic approaches, comprehensive logging analysis, and performance optimization techniques
-* Implement predictive operational practices through capacity planning, performance optimization, and advanced monitoring that enable proactive problem prevention
-* Establish advanced monitoring patterns that correlate technical performance with business outcomes and provide predictive insights for continuous improvement
+* Establish incident response procedures that minimize mean time to resolution through automated detection, escalation, and recovery processes
+* Implement operational practices that balance system reliability with development velocity through data-driven decision making
 
 ### Portfolio and Career Advancement
 **Demonstrable Professional Value**:
@@ -345,58 +270,6 @@ This course represents a **community-driven initiative** to democratize access t
 ### Community Recognition
 
 Contributors who make significant improvements to course content, learning accessibility, or community support will be recognized in course materials and project documentation, helping build professional portfolios while supporting educational excellence for future learners.
-
----
-
-## Support
-
-### Comprehensive Learning Assistance
-
-**Technical Support Channels**:
-* **GitHub Issues** - Exercise-specific technical problems, environment issues, and troubleshooting assistance with detailed problem description templates and triage procedures
-* **GitHub Discussions** - General Q&A, concept clarification, peer learning support, and community knowledge sharing with organized categories for different topic areas
-* **Real-time collaboration** - Synchronized problem-solving sessions and group learning opportunities for complex technical challenges
-
-**Learning Resources**:
-* **Comprehensive troubleshooting guides** included in each exercise with common issues, resolution steps, and prevention strategies
-* **Video resources** and external learning materials curated for different learning styles and supplementary education
-* **Industry best practices** documentation that connects course content to real-world professional requirements and career development
-
-### Professional and Enterprise Support
-
-**Individual Learners**:
-* **Career guidance** connecting course completion to professional opportunities in SRE and cloud engineering roles
-* **Portfolio development** assistance to showcase course projects effectively for job applications and professional advancement
-* **Continued learning** pathways for specialization in advanced SRE topics and emerging technologies
-
-**Organizations and Training Programs**:
-For organizations interested in **customized training programs**, **enterprise deployments**, or **instructor-led workshops**, see the maintainer's profile for professional services and consulting opportunities that adapt course content to specific business requirements and organizational contexts.
-
----
-
-## Acknowledgments
-
-### Educational Foundation and Inspiration
-
-This comprehensive course builds upon proven educational methodologies and industry best practices:
-
-**Technical Foundation**:
-* **Google SRE practices** and documented approaches from the foundational Site Reliability Engineering books and public documentation
-* **CNCF ecosystem tools** and community best practices for cloud-native application development and operations
-* **Industry expertise** from practicing Site Reliability Engineers at leading technology companies who have validated course content and approach
-
-**Educational Methodology**:
-* **SRE Academy** pedagogical approaches that emphasize hands-on learning and practical skill development
-* **Cloud-native education** best practices that leverage modern development tools and cloud platforms for consistent learning experiences
-* **Open source education** principles that prioritize accessibility, community collaboration, and continuous improvement
-
-### Community and Industry Support
-
-**Contributors and Reviewers**:
-Recognition and appreciation for community members who have contributed content improvements, technical corrections, additional scenarios, and learning accessibility enhancements that benefit all future learners.
-
-**Industry Professionals**:
-Gratitude to Site Reliability Engineers, Platform Engineers, and DevOps professionals who have provided real-world context, career guidance, and practical insights that bridge the gap between academic learning and professional practice.
 
 ---
 
