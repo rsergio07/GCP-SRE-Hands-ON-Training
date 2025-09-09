@@ -11,7 +11,7 @@ metadata:
     deployment.kubernetes.io/revision: "1"
     gitops.argoproj.io/sync-wave: "1"
 spec:
-  replicas: 3
+  replicas: 2
   revisionHistoryLimit: 1
   strategy:
     type: RollingUpdate
