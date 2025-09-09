@@ -45,8 +45,9 @@ spec:
       kind: Deployment
       name: sre-demo-app
       jsonPointers:
-        - /spec/replicas
         - /metadata/annotations/deployment.kubernetes.io~1revision
+        - /metadata/generation
+        - /status
 
   info:
     - name: "Monitoring"

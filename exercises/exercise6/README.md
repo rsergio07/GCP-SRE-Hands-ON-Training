@@ -541,7 +541,7 @@ git push origin main
 
 **Git workflow importance:** The commit creates an immutable change record with author attribution, timestamp, and change description that supports audit requirements and rollback capabilities essential for production operations.
 
-#### 4. Refresh ArgoCD
+#### 4. Refresh ArgoCD and Apply Changes
 
 ArgoCD may take time to detect the new commit through polling. Force a refresh to demonstrate immediate synchronization:
 
@@ -551,11 +551,24 @@ ArgoCD may take time to detect the new commit through polling. Force a refresh t
 argocd app get sre-demo-gitops --refresh
 ```
 
+**Important ArgoCD Configuration Note:** If you encounter the "OutOfSync" issue where ArgoCD shows as synchronized but the cluster maintains different replica counts, this indicates the ArgoCD application configuration contains `ignoreDifferences` for replicas. Remove this configuration to allow proper GitOps management:
+
+```bash
+# Edit the ArgoCD application configuration to remove replica ignore rules
+# Remove the /spec/replicas line from ignoreDifferences section in k8s/argocd/application.yaml
+kubectl apply -f k8s/argocd/application.yaml
+
+# Force synchronization
+argocd app sync sre-demo-gitops
+```
+
 **From the ArgoCD UI:**
 
 1. Open your application in the ArgoCD interface
 2. Click **SYNC** and then **SYNCHRONIZE** to trigger immediate synchronization
 3. Observe the application transition to showing 3 replicas with real-time status updates
+
+#### 5. Verify GitOps Synchronization
 
 **From the Terminal verification:**
 
@@ -567,9 +580,9 @@ kubectl get pods -l app=sre-demo-app
 
 ```
 NAME                            READY   STATUS    RESTARTS   AGE
-sre-demo-app-xyz123             1/1     Running   0          2m
-sre-demo-app-xyz456             1/1     Running   0          2m
-sre-demo-app-xyz789             1/1     Running   0          1m
+sre-demo-app-84b5769f44-xyz123  1/1     Running   0          2m
+sre-demo-app-84b5769f44-xyz456  1/1     Running   0          2m
+sre-demo-app-84b5769f44-xyz789  1/1     Running   0          1m
 ```
 
 ```bash
@@ -583,34 +596,65 @@ NAME           READY   UP-TO-DATE   AVAILABLE   AGE
 sre-demo-app   3/3     3            3           2d20h
 ```
 
-### Understanding Configuration Drift Prevention
+```bash
+# Verify ArgoCD shows synchronized status
+argocd app get sre-demo-gitops | grep -E "Sync Status|Health Status"
+```
 
-**⚠️ Important GitOps Behavior:** During your testing, you may observe that replicas briefly scale to 3 but quickly revert to 2. This behavior illustrates the **GitOps reconciliation loop** where ArgoCD continuously enforces the state defined in Git, overriding any manual or temporary changes in the cluster.
+**Expected output:**
 
-**Configuration drift demonstration:** If the Git repository declares `replicas: 2` while you temporarily see 3 replicas, ArgoCD will detect this discrepancy and automatically reconcile back to the Git-defined state, demonstrating how GitOps prevents configuration drift.
+```
+Sync Status:        Synced to HEAD (513bb96)
+Health Status:      Healthy
+```
 
-**To confirm reconciliation behavior:**
+#### 6. Test GitOps Anti-Drift Protection
+
+Demonstrate how GitOps prevents configuration drift by automatically correcting manual changes:
 
 ```bash
+# Attempt manual scaling (should be automatically reverted)
+kubectl scale deployment sre-demo-app --replicas=5
+
+# Wait 30 seconds and observe automatic correction
+sleep 30
+kubectl get deployment sre-demo-app -o jsonpath='{.spec.replicas}' && echo
+```
+
+**Expected behavior:** The deployment should automatically revert from 5 replicas back to 3 replicas within 30 seconds, demonstrating ArgoCD's continuous reconciliation loop.
+
+```bash
+# Verify ArgoCD maintains sync status during drift correction
+argocd app get sre-demo-gitops | grep -E "Sync Status|Health Status"
+```
+
+```bash
+# Examine deployment events showing the anti-drift correction
 kubectl describe deployment sre-demo-app | tail -10
 ```
 
-**Expected output showing reconciliation events:**
+**Expected output showing anti-drift events:**
 
 ```
-  ----           ------  ------
-  Progressing    True    NewReplicaSetAvailable
-  Available      True    MinimumReplicasAvailable
-OldReplicaSets:  sre-demo-app-575794657d (0/0 replicas created)
-NewReplicaSet:   sre-demo-app-84b5769f44 (2/2 replicas created)
 Events:
-  Type    Reason             Age                  From                   Message
-  ----    ------             ----                 ----                   -------
-  Normal  ScalingReplicaSet  6m59s (x2 over 95m)  deployment-controller  Scaled up replica set sre-demo-app-84b5769f44 from 2 to 3
-  Normal  ScalingReplicaSet  6m1s (x2 over 94m)   deployment-controller  Scaled down replica set sre-demo-app-84b5769f44 from 3 to 2
+  Type    Reason             Age                From                   Message
+  ----    ------             ----               ----                   -------
+  Normal  ScalingReplicaSet  45s                deployment-controller  Scaled up replica set sre-demo-app-84b5769f44 from 3 to 5
+  Normal  ScalingReplicaSet  38s                deployment-controller  Scaled down replica set sre-demo-app-84b5769f44 from 5 to 3
 ```
 
-**Key Learning Points:** Git serves as the authoritative source of truth and ArgoCD continuously enforces this state. Manual scaling attempts are automatically corrected through reconciliation loops. Use the `--refresh` flag or UI SYNC button to ensure ArgoCD detects new commits immediately. GitOps prevents configuration drift by automatically detecting and correcting deviations from the declared state.
+### Understanding Configuration Drift Prevention
+
+**Key GitOps Learning Points:** Git serves as the authoritative source of truth and ArgoCD continuously enforces this state. Manual scaling attempts are automatically corrected through reconciliation loops within seconds. This demonstrates how GitOps prevents configuration drift by automatically detecting and correcting deviations from the declared state.
+
+**Production Benefits:** This anti-drift protection ensures that unauthorized changes cannot persist in production environments, maintaining consistency across all deployments while providing complete audit trails through Git commit history.
+
+**GitOps Workflow Validation:** You have successfully demonstrated:
+1. **Declarative Configuration Management** - Changes flow through Git commits
+2. **Automated Synchronization** - ArgoCD detects and applies Git changes automatically  
+3. **Configuration Drift Prevention** - Manual changes are automatically reverted
+4. **Complete Audit Trails** - All changes tracked through Git commit history
+5. **Self-Healing Infrastructure** - System maintains desired state without human intervention
 
 ## Step 7: Test Rollback Using the ArgoCD UI
 
