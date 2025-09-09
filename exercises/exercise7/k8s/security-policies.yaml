@@ -1,218 +1,47 @@
 ---
-# Network Policy for production isolation
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: sre-demo-network-policy
-  namespace: default
-  labels:
-    app: sre-demo-app
-    security.hardened: "true"
-spec:
-  podSelector:
-    matchLabels:
-      app: sre-demo-app
-  policyTypes:
-  - Ingress
-  - Egress
-  ingress:
-  # Allow traffic from load balancer
-  - from:
-    - namespaceSelector: {}
-    ports:
-    - protocol: TCP
-      port: 8080
-  # Allow monitoring traffic
-  - from:
-    - podSelector:
-        matchLabels:
-          app: prometheus
-    ports:
-    - protocol: TCP
-      port: 8080
-  egress:
-  # Allow DNS resolution
-  - to: []
-    ports:
-    - protocol: UDP
-      port: 53
-  # Allow HTTPS for external APIs
-  - to: []
-    ports:
-    - protocol: TCP
-      port: 443
-  # Allow monitoring endpoints
-  - to:
-    - podSelector:
-        matchLabels:
-          app: prometheus
-    ports:
-    - protocol: TCP
-      port: 9090
-
----
-# Pod Security Policy for production workloads
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: sre-demo-psp
-  labels:
-    security.hardened: "true"
-spec:
-  privileged: false
-  allowPrivilegeEscalation: false
-  requiredDropCapabilities:
-    - ALL
-  volumes:
-    - 'configMap'
-    - 'emptyDir'
-    - 'projected'
-    - 'secret'
-    - 'downwardAPI'
-    - 'persistentVolumeClaim'
-  runAsUser:
-    rule: 'MustRunAsNonRoot'
-  seLinux:
-    rule: 'RunAsAny'
-  fsGroup:
-    rule: 'RunAsAny'
-  readOnlyRootFilesystem: true
-
----
-# RBAC for production security
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  namespace: default
-  name: sre-demo-role
-  labels:
-    security.hardened: "true"
-rules:
-- apiGroups: [""]
-  resources: ["configmaps"]
-  verbs: ["get", "list"]
-- apiGroups: [""]
-  resources: ["secrets"]
-  verbs: ["get"]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: sre-demo-rolebinding
-  namespace: default
-  labels:
-    security.hardened: "true"
-subjects:
-- kind: ServiceAccount
-  name: sre-demo-serviceaccount
-  namespace: default
-roleRef:
-  kind: Role
-  name: sre-demo-role
-  apiGroup: rbac.authorization.k8s.io
-
----
+# Pod Security Standards (replacement for deprecated PSP)
 apiVersion: v1
-kind: ServiceAccount
+kind: Namespace
 metadata:
-  name: sre-demo-serviceaccount
-  namespace: default
+  name: default
   labels:
-    app: sre-demo-app
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
     security.hardened: "true"
-automountServiceAccountToken: false
 
 ---
-# Security Context Constraints
+# Security Context Constraints for production workloads
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
-  name: sre-demo-tls-secret
+  name: pod-security-policy
   namespace: default
   labels:
     security.hardened: "true"
-type: kubernetes.io/tls
 data:
-  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t  # Base64 encoded cert
-  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t  # Base64 encoded key
-
----
-# Resource Quota for security
-apiVersion: v1
-kind: ResourceQuota
-metadata:
-  name: sre-demo-quota
-  namespace: default
-  labels:
-    security.hardened: "true"
-spec:
-  hard:
-    requests.cpu: "2"
-    requests.memory: 4Gi
-    limits.cpu: "4" 
-    limits.memory: 8Gi
-    pods: "10"
-    services: "3"
-    secrets: "10"
-    configmaps: "10"
-
----
-# Limit Range for pod security
-apiVersion: v1
-kind: LimitRange
-metadata:
-  name: sre-demo-limits
-  namespace: default
-  labels:
-    security.hardened: "true"
-spec:
-  limits:
-  - type: Container
-    default:
-      cpu: "500m"
-      memory: "256Mi"
-    defaultRequest:
-      cpu: "100m"
-      memory: "128Mi"
-    max:
-      cpu: "1000m"
-      memory: "512Mi"
-    min:
-      cpu: "50m"
-      memory: "64Mi"
-
----
-# Network Policy for egress control
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: sre-demo-egress-policy
-  namespace: default
-  labels:
-    security.hardened: "true"
-spec:
-  podSelector:
-    matchLabels:
-      app: sre-demo-app
-  policyTypes:
-  - Egress
-  egress:
-  # Allow DNS
-  - to: []
-    ports:
-    - protocol: UDP
-      port: 53
-    - protocol: TCP
-      port: 53
-  # Allow NTP
-  - to: []
-    ports:
-    - protocol: UDP
-      port: 123
-  # Allow monitoring endpoints
-  - to:
-    - podSelector:
-        matchLabels:
-          app: prometheus
-  # Block all other egress
+  security-standards.yaml: |
+    # Pod Security Standards configuration
+    # This replaces the deprecated PodSecurityPolicy
+    
+    enforced_standards:
+      - no_root_containers: true
+      - read_only_root_filesystem: true
+      - no_privilege_escalation: true
+      - drop_all_capabilities: true
+      - secure_volumes_only: true
+    
+    allowed_volume_types:
+      - configMap
+      - emptyDir
+      - projected
+      - secret
+      - downwardAPI
+      - persistentVolumeClaim
+    
+    security_context_requirements:
+      run_as_non_root: true
+      read_only_root_filesystem: true
+      allow_privilege_escalation: false
+      required_drop_capabilities:
+        - ALL

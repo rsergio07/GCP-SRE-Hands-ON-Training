@@ -1,10 +1,7 @@
 # Production-hardened multi-stage build
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
-# Security: Run as non-root during build
-RUN groupadd -r builduser && useradd -r -g builduser builduser
-
-# Install only necessary build dependencies
+# Install dependencies as root, then switch to builduser
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libc6-dev \
@@ -12,10 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean
 
 WORKDIR /build
-USER builduser
 
-# Copy and install Python dependencies
-COPY --chown=builduser:builduser requirements.txt .
+# Install Python dependencies as root to avoid permission issues
+COPY requirements.txt .
 RUN pip install --user --no-warn-script-location --no-cache-dir -r requirements.txt
 
 # Production stage - distroless for minimal attack surface
@@ -40,13 +36,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Copy Python packages from builder
-COPY --from=builder /home/builduser/.local /home/appuser/.local
+COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy application with correct ownership
 COPY --chown=1001:1001 app/ ./app/
 COPY --chown=1001:1001 requirements.txt .
 
-# Use non-root user (distroless nonroot user)
+# Use non-root user (distroless nonroot user)  
 USER 1001
 
 # Set PATH for user-installed packages
