@@ -48,8 +48,6 @@ Before starting this exercise, ensure you have completed:
 - Exercise 2: Container Builds & GitHub Actions
 - Exercise 3: Kubernetes Deployment
 - Exercise 4: Cloud Monitoring Stack
-- Successfully deployed monitoring infrastructure with Prometheus
-- Understanding of your application's key metrics and behavior patterns
 
 **Verify your prerequisites:**
 

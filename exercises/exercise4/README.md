@@ -45,8 +45,6 @@ Before starting this exercise, ensure you have completed:
 - Exercise 1: Cloud Development Environment & SRE Application
 - Exercise 2: Container Builds & GitHub Actions  
 - Exercise 3: Kubernetes Deployment
-- Successfully deployed SRE application running on GKE
-- Understanding of your application's existing Prometheus metrics endpoints
 
 **Verify your prerequisites:**
 

@@ -42,9 +42,6 @@ By completing this exercise, you will understand:
 Before starting this exercise, ensure you have completed:
 
 - Exercise 1: Cloud Development Environment Setup
-- Google Cloud Platform account configured with billing enabled
-- GitHub repository forked with Codespaces access
-- Understanding of your Flask application's structure and behavior
 
 Navigate to the Exercise 2 directory:
 

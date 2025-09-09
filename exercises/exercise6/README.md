@@ -49,8 +49,8 @@ Before starting this exercise, ensure you have completed:
 - Exercise 1: Cloud Development Environment & SRE Application
 - Exercise 2: Container Builds & GitHub Actions  
 - Exercise 3: Kubernetes Deployment
-- Successfully deployed SRE application with proper health checks and monitoring integration
-- Understanding of Kubernetes resource management and service discovery patterns
+- Exercise 4: Cloud Monitoring Stack
+- Exercise 5: Alerting and Response
 
 **Verify your Kubernetes environment is operational:**
 
