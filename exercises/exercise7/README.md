@@ -80,9 +80,9 @@ Note: This exercise builds on the complete SRE platform from all previous exerci
 
 ### Production Readiness Principles
 
-**Essential Watching** (20 minutes):
-- [Production Readiness Checklist](https://www.youtube.com/watch?v=A3mpJ5DkJ2g) by Google Cloud Tech - Production standards and validation approaches
-- [Kubernetes Security Best Practices](https://www.youtube.com/watch?v=oBf5lrmquYI) by CNCF - Comprehensive security implementation guide
+**Essential Watching** (45 minutes):
+- [Production Readiness Checklist](https://www.youtube.com/watch?v=T1MumhkNnBg) by Platform Engineering - Production standards and validation approaches
+- [Kubernetes Security Best Practices](https://www.youtube.com/watch?v=oBf5lrmquYI) by TechWorld with Nana - Comprehensive security implementation guide
 
 **Reference Documentation**:
 - [Google SRE Book - Managing Critical State](https://sre.google/sre-book/managing-critical-state/) - Production system management principles
@@ -91,11 +91,10 @@ Note: This exercise builds on the complete SRE platform from all previous exerci
 ### Cost Optimization and FinOps
 
 **Essential Watching** (15 minutes):
-- [FinOps for Kubernetes](https://www.youtube.com/watch?v=RBRJy1ktOHc) by KubeCon - Cost management strategies and implementation
-- [GKE Cost Optimization](https://www.youtube.com/watch?v=34o6cCLczl4) by Google Cloud - Practical cost reduction techniques
+- [GKE Cost Optimization](https://www.youtube.com/watch?v=sYdCqxM7OFM) by Google Cloud - Practical cost reduction techniques
 
 **Reference Documentation**:
-- [GKE Cost Optimization](https://cloud.google.com/kubernetes-engine/docs/how-to/cost-optimization) - Official cost optimization strategies
+- [GKE Cost Optimization](https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke) - Official cost optimization strategies
 - [Kubernetes Resource Management](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) - Resource optimization best practices
 
 ### Key Concepts You'll Learn
