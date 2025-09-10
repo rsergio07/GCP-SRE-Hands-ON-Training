@@ -13,7 +13,7 @@ spec:
   project: default
 
   source:
-    repoURL: https://github.com/rsergio07/kubernetes-sre-cloud-native
+    repoURL: https://github.com/YOUR-USERNAME/kubernetes-sre-cloud-native
     targetRevision: HEAD
     path: exercises/exercise6/k8s/gitops
     kustomize: {}
