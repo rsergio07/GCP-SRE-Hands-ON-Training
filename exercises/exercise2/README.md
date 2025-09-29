@@ -670,7 +670,7 @@ Before triggering the automated build pipeline, confirm that your Artifact Regis
 
 ```bash
 # List images currently in the repo (should be empty before your first push)
-gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app
+gcloud artifacts docker images list us-central1-docker.pkg.dev/$PROJECT_ID/sre-demo-app
 ```
 
 **Expected output:**
@@ -785,7 +785,7 @@ Check that your registry now contains the built image:
 
 ```bash
 # List images created in the repository
-gcloud artifacts docker images list us-central1-docker.pkg.dev/gcp-sre-lab/sre-demo-app
+gcloud artifacts docker images list us-central1-docker.pkg.dev/$PROJECT_ID/sre-demo-app
 ```
 
 ***Expected output (after successful build)***:
