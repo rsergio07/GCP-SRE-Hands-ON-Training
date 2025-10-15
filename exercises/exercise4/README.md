@@ -19,7 +19,7 @@
 
 ## Introduction
 
-In this exercise, you will implement a comprehensive monitoring stack for your Kubernetes-deployed SRE application. You'll learn how to deploy Prometheus, handle real-world configuration challenges, and create monitoring that provides actionable insights for SRE decision-making.
+In this exercise, you will implement a comprehensive monitoring stack for your Kubernetes-deployed SRE application. You'll learn how to deploy Prometheus with proper RBAC permissions, handle real-world configuration challenges, and create monitoring that provides actionable insights for SRE decision-making.
 
 This exercise demonstrates the complexities of production monitoring systems and teaches you to diagnose and resolve common observability challenges that SRE teams encounter daily.
 
@@ -29,7 +29,8 @@ This exercise demonstrates the complexities of production monitoring systems and
 
 By completing this exercise, you will understand:
 
-- **Production Monitoring Deployment**: How to deploy Prometheus in Kubernetes with proper service discovery
+- **Production Monitoring Deployment**: How to deploy Prometheus in Kubernetes with proper RBAC and service discovery
+- **Kubernetes RBAC for Monitoring**: How to configure ServiceAccounts, ClusterRoles, and permissions for observability
 - **Troubleshooting Service Discovery**: How to diagnose and fix common Prometheus configuration issues
 - **Google Cloud Integration**: How to work with Google Cloud Monitoring APIs and handle permission limitations
 - **Real-Time Observation**: How to generate traffic and observe metrics propagation in real-time
@@ -76,10 +77,13 @@ sre-demo-service   LoadBalancer   34.118.234.68   104.154.201.227   80:30123/TCP
 **Reference Documentation**:
 - [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
 - [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/)
+- [Kubernetes RBAC Documentation](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
 ### Key Concepts for This Exercise
 
 **Service Discovery Challenges**: In real production environments, Prometheus service discovery requires careful configuration of RBAC permissions, proper pod annotations, and network connectivity. You'll experience and resolve these challenges.
+
+**Kubernetes RBAC**: Role-Based Access Control is essential for securing cluster operations. Prometheus requires specific permissions to discover and scrape pods across namespaces. Understanding RBAC is critical for production deployments.
 
 **Metric Propagation Delays**: Understanding why metrics don't appear immediately and how to verify the monitoring pipeline is critical for SRE work. You'll learn to distinguish between configuration issues and normal delays.
 
@@ -239,6 +243,18 @@ cat k8s/monitoring/prometheus-config.yaml
 - **Dynamic Scaling**: Automatically includes new pods as they're created
 - **Metadata Enrichment**: Adds Kubernetes labels to metrics for better querying
 
+**Examine the RBAC configuration:**
+
+```bash
+# Review the RBAC permissions required for service discovery
+cat k8s/monitoring/prometheus-rbac.yaml
+```
+
+**Understanding RBAC Components:**
+- **ServiceAccount**: Dedicated identity for Prometheus pods (`prometheus`)
+- **ClusterRole**: Defines read permissions for pods, services, endpoints, and nodes
+- **ClusterRoleBinding**: Links the ServiceAccount to the ClusterRole permissions
+
 **Examine the deployment specifications:**
 
 ```bash
@@ -253,31 +269,95 @@ cat k8s/monitoring/prometheus-deployment.yaml
 - **External Access**: LoadBalancer service for dashboard and API access
 - **Persistent Storage**: EmptyDir volume for metric storage (15-day retention)
 
-### Step 6: Deploy Prometheus to Your Cluster
+---
 
-Deploy the complete Prometheus monitoring stack:
+### Step 6: Deploy Prometheus with RBAC to Your Cluster
+
+Deploy the complete Prometheus monitoring stack with proper Kubernetes service discovery permissions.
+
+**Understanding the deployment components:**
+
+Your Prometheus deployment includes three critical Kubernetes manifests:
+
+1. **prometheus-rbac.yaml**: ServiceAccount, ClusterRole, and ClusterRoleBinding for Kubernetes API access
+2. **prometheus-config.yaml**: ConfigMap with scraping configuration and service discovery rules
+3. **prometheus-deployment.yaml**: Deployment and Service for the Prometheus server
+
+**Deploy Prometheus in the correct order:**
 
 ```bash
-# Deploy Prometheus configuration and deployment
+# Step 1: Apply RBAC configuration first (required for service discovery)
+kubectl apply -f k8s/monitoring/prometheus-rbac.yaml
+
+# Step 2: Apply Prometheus configuration
 kubectl apply -f k8s/monitoring/prometheus-config.yaml
+
+# Step 3: Deploy Prometheus server
 kubectl apply -f k8s/monitoring/prometheus-deployment.yaml
 ```
 
 **Expected output:**
 ```
-configmap/prometheus-config created
-deployment.apps/prometheus created
-service/prometheus-service created
 serviceaccount/prometheus created
 clusterrole.rbac.authorization.k8s.io/prometheus created
 clusterrolebinding.rbac.authorization.k8s.io/prometheus created
+configmap/prometheus-config-with-alertmanager created
+configmap/prometheus-alerts created
+deployment.apps/prometheus created
+service/prometheus-service created
 ```
 
-**Understanding the resources created:**
-- **ConfigMap**: Stores Prometheus scraping and discovery configuration
-- **Deployment**: Manages the Prometheus server pod with proper resource limits
-- **Service**: Provides LoadBalancer access to Prometheus web UI (port 9090)
-- **RBAC Resources**: Enable Prometheus to discover targets via Kubernetes API
+**Understanding why RBAC is applied first:**
+
+Prometheus requires permissions to query the Kubernetes API for pod discovery. The RBAC configuration provides:
+
+- **ServiceAccount**: Dedicated identity for Prometheus pods (`prometheus`)
+- **ClusterRole**: Read permissions for pods, services, endpoints, and nodes across the cluster
+- **ClusterRoleBinding**: Links the ServiceAccount to the ClusterRole permissions
+
+Without these permissions, Prometheus cannot discover your application pods automatically and you'll see errors like:
+```
+pods is forbidden: User "system:serviceaccount:default:default" cannot list resource "pods"
+```
+
+**Verify all resources were created successfully:**
+
+```bash
+# Check RBAC resources
+kubectl get serviceaccount prometheus
+kubectl get clusterrole prometheus
+kubectl get clusterrolebinding prometheus
+
+# Check ConfigMaps
+kubectl get configmap prometheus-config-with-alertmanager
+kubectl get configmap prometheus-alerts
+
+# Check Deployment and Service
+kubectl get deployment prometheus
+kubectl get service prometheus-service
+```
+
+**Expected output:**
+```
+NAME         SECRETS   AGE
+prometheus   0         30s
+
+NAME         CREATED AT
+prometheus   2025-10-15T10:30:00Z
+
+NAME         ROLE                     AGE
+prometheus   ClusterRole/prometheus   30s
+
+NAME                                    DATA   AGE
+prometheus-config-with-alertmanager     1      30s
+prometheus-alerts                       1      30s
+
+NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+prometheus   1/1     1            1           30s
+
+NAME                 TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+prometheus-service   LoadBalancer   10.96.123.45    <pending>     9090:31234/TCP   30s
+```
 
 **Wait for Prometheus to be fully operational:**
 
@@ -291,52 +371,33 @@ kubectl wait --for=condition=available --timeout=300s deployment/prometheus
 deployment.apps/prometheus condition met
 ```
 
-**This command waits up to 5 minutes** for Prometheus to reach Available status, including image pull, configuration mounting, and initial health checks.
+**This command waits up to 5 minutes** for Prometheus to reach Available status, including:
+- Image pull from Docker Hub
+- Configuration mounting from ConfigMaps
+- Service discovery initialization
+- Health check probes passing
 
-### Step 7: Verify Prometheus Deployment Success
+---
 
-Check that all components are running correctly:
+### Step 7: Verify Prometheus is Working Correctly
+
+Check that all components are running and properly configured:
 
 ```bash
 # Check Prometheus service status
-kubectl get services prometheus-service
+kubectl get service prometheus-service
 ```
 
 **Expected output:**
 ```
-NAME                 TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
-prometheus-service   LoadBalancer   34.118.234.68   34.9.23.171   9090:31903/TCP   46m
+NAME                 TYPE           CLUSTER-IP      EXTERNAL-IP     PORT(S)          AGE
+prometheus-service   LoadBalancer   10.96.123.45    34.123.45.67    9090:31234/TCP   2m
 ```
 
 **Understanding the service configuration:**
 - **LoadBalancer type**: Provides external internet access to Prometheus
-- **External IP**: Your Prometheus web interface address (34.9.23.171 in this example)
+- **External IP**: Your Prometheus web interface address (34.123.45.67 in this example)
 - **Port mapping**: 9090 is the standard Prometheus port
-
-**Examine Prometheus startup logs for successful configuration:**
-
-```bash
-# Check Prometheus pod logs for successful startup
-kubectl logs -l app=prometheus --tail=20
-```
-
-**Expected healthy startup logs:**
-```
-ts=2025-09-06T17:19:34.287Z caller=main.go:583 level=info msg="Starting Prometheus Server" mode=server version="(version=2.47.0, branch=HEAD, revision=efa34a5840661c29c2e362efa76bc3a70dccb335)"
-ts=2025-09-06T17:19:34.397Z caller=main.go:1009 level=info msg="Server is ready to receive web requests."
-ts=2025-09-06T17:19:34.339Z caller=kubernetes.go:329 level=info component="discovery manager scrape" discovery=kubernetes config=sre-demo-app msg="Using pod service account via in-cluster config"
-```
-
-**Critical log messages to understand:**
-- **"Starting Prometheus Server"**: Core startup successful
-- **"Server is ready to receive web requests"**: HTTP API operational
-- **"Using pod service account via in-cluster config"**: RBAC authentication working
-
-**Some warnings are normal:**
-```
-ts=2025-09-06T17:19:34.452Z caller=klog.go:96 level=warn component=k8s_client_runtime func=Warning msg="v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice"
-```
-These warnings about deprecated Kubernetes APIs are expected and don't impact functionality.
 
 **Get your Prometheus access URL:**
 
@@ -348,10 +409,57 @@ echo "Prometheus URL: http://$PROMETHEUS_IP:9090"
 
 **Expected output:**
 ```
-Prometheus URL: http://34.9.23.171:9090
+Prometheus URL: http://34.123.45.67:9090
 ```
 
-**Open this URL in your browser** to access the Prometheus web interface. You'll use this for testing queries and verifying service discovery in the following steps.
+**Verify Prometheus logs show successful startup:**
+
+```bash
+# Check Prometheus pod logs for successful startup
+kubectl logs -l app=prometheus --tail=30
+```
+
+**Expected healthy startup logs:**
+```
+ts=2025-10-15T10:30:34.287Z caller=main.go:583 level=info msg="Starting Prometheus Server" mode=server version="(version=2.47.0, branch=HEAD, revision=...)"
+ts=2025-10-15T10:30:34.339Z caller=kubernetes.go:329 level=info component="discovery manager scrape" discovery=kubernetes config=sre-demo-app msg="Using pod service account via in-cluster config"
+ts=2025-10-15T10:30:34.397Z caller=main.go:1009 level=info msg="Server is ready to receive web requests."
+```
+
+**Critical log messages indicating success:**
+- **"Starting Prometheus Server"**: Core startup successful
+- **"Using pod service account via in-cluster config"**: RBAC authentication working correctly
+- **"Server is ready to receive web requests"**: HTTP API operational and ready
+
+**Some warnings are normal:**
+```
+ts=2025-10-15T10:30:34.452Z caller=klog.go:96 level=warn component=k8s_client_runtime func=Warning msg="v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice"
+```
+These warnings about deprecated Kubernetes APIs are expected and don't impact functionality.
+
+**Verify NO permission errors appear in logs:**
+
+```bash
+# Check for any RBAC permission errors (should return nothing)
+kubectl logs -l app=prometheus --tail=50 | grep -i "forbidden"
+```
+
+**Expected output:** *No output* (no permission errors)
+
+If you see errors about pods, nodes, or services being "forbidden", the RBAC configuration wasn't applied correctly. Reapply with:
+```bash
+kubectl apply -f k8s/monitoring/prometheus-rbac.yaml
+kubectl rollout restart deployment/prometheus
+```
+
+**Access Prometheus web interface:**
+
+Open your browser and navigate to: `http://$PROMETHEUS_IP:9090`
+
+You should see the Prometheus web interface with:
+- **Status menu**: Shows server status and configuration
+- **Graph tab**: For running PromQL queries
+- **Targets page** (Status → Targets): Shows discovered scrape targets
 
 ---
 
@@ -736,21 +844,24 @@ echo "https://console.cloud.google.com/monitoring/overview?project=$PROJECT_ID"
 
 By completing this exercise, you have successfully demonstrated:
 
-Your ability to deploy a production-ready Prometheus monitoring stack in Kubernetes with proper RBAC configuration, your understanding of advanced monitoring integration patterns and their environmental dependencies, your skills in real-time traffic coordination and metric observation across multiple terminals, your knowledge of the four golden signals and how to query them using PromQL, your experience with dashboard-as-code concepts and production monitoring design principles, and your understanding of how monitoring architectures must adapt to different cluster configurations and permission constraints.
+Your ability to deploy a production-ready Prometheus monitoring stack in Kubernetes with proper RBAC configuration, your understanding of Kubernetes RBAC principles and how they secure cluster resources, your skills in real-time traffic coordination and metric observation across multiple terminals, your knowledge of the four golden signals and how to query them using PromQL, your experience with dashboard-as-code concepts and production monitoring design principles, and your understanding of how monitoring architectures must adapt to different cluster configurations and permission constraints.
 
 ### Verification Questions
 
 Test your understanding by answering these questions:
 
-1. **Why might** Prometheus service discovery fail to find your application pods, and what specific annotations are required?
-2. **How do** advanced monitoring integrations like PodMonitor differ from basic Prometheus configuration?
-3. **What are** the four golden signals, and which PromQL queries would you use to measure each one?
-4. **How would** you design a dashboard that supports both technical monitoring and business decision-making?
-5. **Why is** understanding configuration limitations as important as successful deployments?
+1. **Why is** RBAC configuration required for Prometheus service discovery, and what specific permissions does it need?
+2. **Why might** Prometheus service discovery fail to find your application pods, and what specific annotations are required?
+3. **How do** advanced monitoring integrations like PodMonitor differ from basic Prometheus configuration?
+4. **What are** the four golden signals, and which PromQL queries would you use to measure each one?
+5. **How would** you design a dashboard that supports both technical monitoring and business decision-making?
+6. **Why is** understanding configuration limitations as important as successful deployments?
 
 ### Key Monitoring Insights Gained
 
 **Production Monitoring Complexity**: Enterprise monitoring systems require multiple layers of configuration, from basic metric collection to advanced service discovery and dashboard automation. Understanding both simple and complex approaches prepares you for various production environments.
+
+**RBAC is Essential**: Kubernetes RBAC is not optional for production deployments. Prometheus requires specific permissions to discover pods, and understanding how to configure ServiceAccounts, ClusterRoles, and ClusterRoleBindings is critical for secure operations.
 
 **Configuration Resilience**: Monitoring strategies must work across different cluster configurations, permission levels, and integration capabilities. Building monitoring that degrades gracefully when advanced features aren't available ensures reliable observability.
 
@@ -764,17 +875,102 @@ Test your understanding by answering these questions:
 
 ### Service Discovery Problems
 
-**Prometheus not discovering application targets**: Verify that your application pods have the correct `prometheus.io/scrape: "true"` annotation with `kubectl get pods -l app=sre-demo-app -o yaml | grep prometheus.io` and ensure that Prometheus RBAC has cluster-wide read permissions for pod discovery.
+**Prometheus not discovering application targets**
 
-**Targets showing "DOWN" status**: Check network connectivity between Prometheus and application pods using `kubectl exec` commands, verify that the application is actually exposing metrics on the specified port and path, and confirm that any network policies allow traffic between the monitoring and application namespaces.
+**Symptoms:**
+- Prometheus Targets page shows no entries for `sre-demo-app`
+- Service discovery appears to not be working
 
-**Metrics appear and disappear intermittently**: This often indicates pod restarts due to resource limits or health check failures. Monitor pod stability with `kubectl get pods -w` and check if Prometheus resource limits need adjustment.
+**Solution:**
+Verify that your application pods have the correct `prometheus.io/scrape: "true"` annotation:
+```bash
+kubectl get pods -l app=sre-demo-app -o yaml | grep prometheus.io
+```
+
+If annotations are missing, patch your deployment:
+```bash
+kubectl patch deployment sre-demo-app -p '{
+  "spec": {
+    "template": {
+      "metadata": {
+        "annotations": {
+          "prometheus.io/scrape": "true",
+          "prometheus.io/port": "80",
+          "prometheus.io/path": "/metrics"
+        }
+      }
+    }
+  }
+}'
+```
+
+**Prometheus showing permission errors**
+
+**Symptoms:**
+- Logs contain: `pods is forbidden: User "system:serviceaccount:default:default" cannot list resource "pods"`
+- Prometheus cannot discover any Kubernetes resources
+
+**Root Cause:**
+RBAC configuration not applied or Prometheus deployment using wrong ServiceAccount.
+
+**Solution:**
+```bash
+# Verify RBAC resources exist
+kubectl get serviceaccount prometheus
+kubectl get clusterrole prometheus
+kubectl get clusterrolebinding prometheus
+
+# If missing, reapply RBAC
+kubectl apply -f k8s/monitoring/prometheus-rbac.yaml
+
+# Verify Prometheus is using correct ServiceAccount
+kubectl get deployment prometheus -o jsonpath='{.spec.template.spec.serviceAccountName}'
+# Should output: prometheus
+
+# If incorrect, reapply deployment
+kubectl apply -f k8s/monitoring/prometheus-deployment.yaml
+
+# Restart Prometheus
+kubectl rollout restart deployment/prometheus
+kubectl rollout status deployment/prometheus
+
+# Verify logs are clean
+kubectl logs -l app=prometheus --tail=30 | grep -i forbidden
+# Should return nothing
+```
+
+**Targets showing "DOWN" status**
+
+**Symptoms:**
+- Prometheus discovers targets but they show as "DOWN"
+
+**Solution:**
+Check network connectivity between Prometheus and application pods:
+```bash
+# Get application pod IP
+kubectl get pods -l app=sre-demo-app -o wide
+
+# Test connectivity from Prometheus pod
+kubectl exec -it $(kubectl get pod -l app=prometheus -o name) -- \
+  wget -O- http://<app-pod-ip>:80/metrics
+```
+
+Verify that the application is actually exposing metrics on the specified port and path, and confirm that any network policies allow traffic between the monitoring and application namespaces.
+
+**Metrics appear and disappear intermittently**
+
+This often indicates pod restarts due to resource limits or health check failures. Monitor pod stability:
+```bash
+kubectl get pods -w
+```
+
+Check if Prometheus resource limits need adjustment.
 
 ### Query and Data Issues
 
 **PromQL queries return no data**: Verify that your time range covers periods when your application was receiving traffic, check that metric names match exactly (Prometheus is case-sensitive), and confirm that rate queries use appropriate time windows (5m minimum for meaningful rate calculations).
 
-**High latency in metric collection**: Check if your Prometheus instance is resource-constrained with `kubectl top pod prometheus-xxx`, verify that scrape intervals aren't too aggressive for your application's capacity, and consider if high cardinality labels are causing memory pressure.
+**High latency in metric collection**: Check if your Prometheus instance is resource-constrained with `kubectl top pod`, verify that scrape intervals aren't too aggressive for your application's capacity, and consider if high cardinality labels are causing memory pressure.
 
 **Google Cloud Monitoring integration missing data**: Verify that required APIs are enabled and accessible, understand that custom metrics can take 5-10 minutes to appear, and check that your GKE cluster has appropriate IAM permissions for Cloud Monitoring.
 
@@ -784,14 +980,23 @@ Test your understanding by answering these questions:
 
 **RBAC permission denied errors**: Ensure that the Prometheus ServiceAccount has the correct ClusterRole bindings for Kubernetes API access, verify that your GKE cluster has RBAC enabled, and check if workspace-specific permissions are required.
 
-**LoadBalancer IP stuck in pending**: Verify that your Google Cloud project has available external IP quota, check that the Container Registry API is enabled, and ensure that your GKE cluster has proper
+**LoadBalancer IP stuck in pending**: Verify that your Google Cloud project has available external IP quota, check that the required APIs are enabled, and ensure that your GKE cluster has proper network configuration.
+
+---
 
 ## Next Steps
 
-You have successfully implemented comprehensive monitoring and alerting capabilities that focus on user impact rather than system behavior. You've defined meaningful SLIs and SLOs that guide reliability decisions, created alert policies that notify teams of actionable problems, established incident response procedures that minimize MTTR, and implemented error budget management that balances reliability with development velocity.
+You have successfully implemented comprehensive monitoring capabilities with proper RBAC configuration and service discovery. You've learned how Kubernetes security integrates with observability, how to troubleshoot common permission issues, and how to create queries that support SRE decision-making.
 
 **Proceed to [Exercise 5](../exercise5/)** where you will implement intelligent alerting and incident response workflows based on the monitoring infrastructure established in this exercise, define Service Level Indicators (SLIs) and Service Level Objectives (SLOs) that measure user experience, create alert policies that signal actionable problems without generating noise, and establish incident response procedures that support effective problem resolution and minimize Mean Time to Resolution (MTTR).
 
-**Key Concepts to Remember**: Effective monitoring provides visibility into system behavior but requires intelligent alerting to drive action. Service discovery and metric collection are the foundation, but alert policies and incident response procedures determine operational effectiveness. Self-hosted Prometheus provides reliable metrics collection across diverse environments, while structured observability data enables both automated alerting and manual investigation during incidents.
+**Key Concepts to Remember**: Effective monitoring provides visibility into system behavior but requires intelligent alerting to drive action. RBAC configuration is essential for secure Kubernetes operations and enables Prometheus to discover targets dynamically. Service discovery and metric collection are the foundation, but alert policies and incident response procedures determine operational effectiveness. Self-hosted Prometheus provides reliable metrics collection across diverse environments, while structured observability data enables both automated alerting and manual investigation during incidents.
 
-**Before Moving On**: Ensure you can explain how your monitoring stack collects and stores metrics, why service discovery configuration is critical for dynamic environments, and how the metrics you've implemented support both immediate troubleshooting and long-term reliability analysis. In the next exercise, you'll build alerting policies that convert this observability data into actionable incident response workflows.
+**Before Moving On**: Ensure you can explain:
+- How Kubernetes RBAC enables Prometheus service discovery
+- Why ServiceAccounts, ClusterRoles, and ClusterRoleBindings are necessary
+- How your monitoring stack collects and stores metrics
+- Why service discovery configuration is critical for dynamic environments
+- How the metrics you've implemented support both immediate troubleshooting and long-term reliability analysis
+
+In the next exercise, you'll build alerting policies that convert this observability data into actionable incident response workflows.
